@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Diff Visualizer</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light-theme">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark-theme" disabled>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif; /* Ensure Inter font is loaded or fall back */
+        }
+        /* Basic line highlighting styles */
+        .diff-line {
+            display: flex;
+            min-height: 1.5em; /* Ensure consistent line height */
+            font-family: 'Courier New', Courier, monospace; /* Monospace for code */
+            font-size: 0.875rem; /* text-sm */
+            white-space: pre; /* Preserve whitespace */
+        }
+        .line-num {
+            min-width: 40px; /* Fixed width for line numbers */
+            padding-right: 10px;
+            text-align: right;
+            color: #888; /* Neutral color for line numbers */
+            user-select: none; /* Prevent selecting line numbers */
+            flex-shrink: 0;
+        }
+        .line-content {
+            flex-grow: 1;
+            white-space: pre-wrap; /* Wrap long lines */
+            word-break: break-all; /* Break long words/tokens */
+        }
+        .line-added .line-content {
+            background-color: rgba(46, 160, 67, 0.15); /* Light green background */
+        }
+        .line-removed .line-content {
+            background-color: rgba(248, 81, 73, 0.15); /* Light red background */
+        }
+        .line-added::before {
+            content: '+';
+            padding-left: 8px;
+            padding-right: 8px;
+            color: #2da043; /* Green plus */
+            font-weight: bold;
+        }
+        .line-removed::before {
+            content: '-';
+            padding-left: 8px;
+            padding-right: 8px;
+            color: #f85149; /* Red minus */
+            font-weight: bold;
+        }
+        /* Ensure pre/code take up space */
+         pre code.hljs {
+            display: block; /* Make sure hljs takes block display */
+            padding: 0; /* Remove default padding if handled by line divs */
+            background: none; /* Remove default hljs background */
+            overflow-x: visible; /* Prevent horizontal scroll within code block */
+        }
+
+        /* Tailwind dark mode styles (using Tailwind's dark: prefix) */
+        /* These override default Tailwind dark mode colors if needed, but rely on the 'dark' class on <html> */
+        .dark .bg-gray-100 { background-color: #1f2937 !important; } /* Adjust dark background */
+        .dark .text-gray-800 { color: #e5e7eb !important; }
+        .dark .text-gray-600 { color: #9ca3af !important; }
+        .dark .border-gray-300 { border-color: #4b5563 !important; }
+        .dark .bg-white { background-color: #374151 !important; } /* Darker background for elements */
+        .dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3) !important; }
+        /* Ensure form elements adapt */
+        .dark select, .dark textarea {
+            background-color: #4b5563 !important;
+            color: #e5e7eb !important;
+            border-color: #6b7280 !important;
+        }
+        .dark .placeholder-gray-400::placeholder {
+             color: #9ca3af !important;
+        }
+        /* Dark mode diff styles */
+        .dark .line-num { color: #6b7280 !important; } /* Dark mode line numbers */
+        .dark .line-added .line-content { background-color: rgba(34, 139, 34, 0.25) !important; } /* Darker green */
+        .dark .line-removed .line-content { background-color: rgba(178, 34, 34, 0.25) !important; } /* Darker red */
+        .dark .line-added::before { color: #34d399 !important; } /* Lighter green plus */
+        .dark .line-removed::before { color: #f87171 !important; } /* Lighter red minus */
+        .dark .text-gray-500 { color: #a0aec0 !important; } /* Adjust placeholder text color */
+
+
+    </style>
+     <script>
+      // Configure TailwindCSS - apply dark mode based on the class on <html>
+      tailwind.config = {
+        darkMode: 'class', // or 'media'
+        // ... other configurations if needed
+      }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 transition-colors duration-300">
+
+    <div class="container mx-auto p-4 max-w-7xl">
+        <h1 class="text-2xl font-bold mb-4 text-center text-gray-800 dark:text-gray-100">Code Diff Visualizer</h1>
+
+        <div class="controls bg-white dark:bg-gray-700 shadow-md rounded-lg p-4 mb-6 flex flex-wrap items-center gap-4">
+            <div>
+                <label for="language" class="block text-sm font-medium text-gray-600 dark:text-gray-300 mr-2">Language:</label>
+                <select id="language" name="language" class="rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm py-1 px-2">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="java">Java</option>
+                    <option value="plaintext">Plain Text</option>
+                </select>
+            </div>
+
+            <div>
+                 <label class="block text-sm font-medium text-gray-600 dark:text-gray-300 mr-2">Theme:</label>
+                 <button id="theme-toggle" class="px-3 py-1 bg-gray-200 dark:bg-gray-600 rounded-md text-sm shadow-sm hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200">Toggle Dark Mode</button>
+            </div>
+
+            <div class="ml-auto">
+                <button id="export-png" class="px-4 py-1 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 text-sm">
+                    Export as PNG
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label for="old-code" class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">Old Code (Before)</label>
+                <textarea id="old-code" rows="10" class="w-full p-2 border border-gray-300 rounded-md shadow-sm font-mono text-sm focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400 dark:placeholder-gray-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" placeholder="Paste the original code here..."></textarea>
+            </div>
+            <div>
+                <label for="new-code" class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">New Code (After)</label>
+                <textarea id="new-code" rows="10" class="w-full p-2 border border-gray-300 rounded-md shadow-sm font-mono text-sm focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400 dark:placeholder-gray-500 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600" placeholder="Paste the modified code here..."></textarea>
+            </div>
+        </div>
+
+        <div>
+            <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Diff Preview</h2>
+            <div id="diff-output" class="bg-white dark:bg-gray-800 shadow-md rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+                <div class="p-4 text-center text-gray-500 dark:text-gray-400">Enter code above to see the diff.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const oldCodeEl = document.getElementById('old-code');
+        const newCodeEl = document.getElementById('new-code');
+        const languageSelect = document.getElementById('language');
+        const diffOutputEl = document.getElementById('diff-output');
+        const exportButton = document.getElementById('export-png');
+        const themeToggleButton = document.getElementById('theme-toggle');
+        const lightThemeLink = document.getElementById('hljs-light-theme');
+        const darkThemeLink = document.getElementById('hljs-dark-theme');
+
+        // --- Debounce Function ---
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // --- Core Diff and Render Function ---
+        function renderDiff() {
+            // ... (renderDiff function remains the same) ...
+             const oldStr = oldCodeEl.value;
+            const newStr = newCodeEl.value;
+            const language = languageSelect.value;
+
+            diffOutputEl.innerHTML = '';
+
+            if (!oldStr && !newStr) {
+                 const isDark = document.documentElement.classList.contains('dark');
+                 diffOutputEl.innerHTML = `<div class="p-4 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}">Enter code above to see the diff.</div>`;
+                 return;
+            }
+
+            const diffResult = Diff.diffLines(oldStr, newStr, { newlineIsToken: false, ignoreWhitespace: false });
+
+            const fragment = document.createDocumentFragment();
+            const diffContainer = document.createElement('div');
+            diffContainer.className = 'flex';
+
+            const oldColumn = document.createElement('div');
+            oldColumn.className = 'flex-1 border-r border-gray-300 dark:border-gray-600 overflow-x-auto';
+            const newColumn = document.createElement('div');
+            newColumn.className = 'flex-1 overflow-x-auto';
+
+            let oldLineNum = 1;
+            let newLineNum = 1;
+
+            diffResult.forEach(part => {
+                let lines = part.value.split('\n');
+                if (lines[lines.length - 1] === '') lines.pop();
+                if (lines.length === 0 && part.value === '\n') lines.push('');
+
+                lines.forEach((line) => {
+                    const oldLineDiv = document.createElement('div');
+                    oldLineDiv.className = 'diff-line';
+                    const newLineDiv = document.createElement('div');
+                    newLineDiv.className = 'diff-line';
+
+                    const oldNumSpan = document.createElement('span');
+                    oldNumSpan.className = 'line-num';
+                    const newNumSpan = document.createElement('span');
+                    newNumSpan.className = 'line-num';
+
+                    const oldContentPre = document.createElement('pre');
+                    const oldContentCode = document.createElement('code');
+                    oldContentCode.className = `line-content hljs ${language}`;
+                    oldContentCode.textContent = line;
+
+                    const newContentPre = document.createElement('pre');
+                    const newContentCode = document.createElement('code');
+                    newContentCode.className = `line-content hljs ${language}`;
+                    newContentCode.textContent = line;
+
+                    oldContentPre.appendChild(oldContentCode);
+                    newContentPre.appendChild(newContentCode);
+
+                    if (part.added) {
+                        oldNumSpan.textContent = '';
+                        oldContentCode.textContent = '';
+                        oldLineDiv.classList.add('line-empty');
+                        newNumSpan.textContent = newLineNum++;
+                        newLineDiv.classList.add('line-added');
+                        newLineDiv.appendChild(newNumSpan);
+                        newLineDiv.appendChild(newContentPre);
+                        newColumn.appendChild(newLineDiv);
+                        oldLineDiv.appendChild(oldNumSpan);
+                        oldLineDiv.appendChild(oldContentPre);
+                        oldColumn.appendChild(oldLineDiv);
+                    } else if (part.removed) {
+                        newNumSpan.textContent = '';
+                        newContentCode.textContent = '';
+                        newLineDiv.classList.add('line-empty');
+                        oldNumSpan.textContent = oldLineNum++;
+                        oldLineDiv.classList.add('line-removed');
+                        oldLineDiv.appendChild(oldNumSpan);
+                        oldLineDiv.appendChild(oldContentPre);
+                        oldColumn.appendChild(oldLineDiv);
+                        newLineDiv.appendChild(newNumSpan);
+                        newLineDiv.appendChild(newContentPre);
+                        newColumn.appendChild(newLineDiv);
+                    } else {
+                        oldNumSpan.textContent = oldLineNum++;
+                        newNumSpan.textContent = newLineNum++;
+                        oldLineDiv.appendChild(oldNumSpan);
+                        oldLineDiv.appendChild(oldContentPre);
+                        oldColumn.appendChild(oldLineDiv);
+                        newLineDiv.appendChild(newNumSpan);
+                        newLineDiv.appendChild(newContentPre);
+                        newColumn.appendChild(newLineDiv);
+                    }
+                });
+            });
+
+            diffContainer.appendChild(oldColumn);
+            diffContainer.appendChild(newColumn);
+            fragment.appendChild(diffContainer);
+            diffOutputEl.appendChild(fragment);
+
+            diffOutputEl.querySelectorAll('pre code').forEach((block) => {
+                 block.classList.remove(...Array.from(block.classList).filter(cls => cls.startsWith('language-') || cls === 'hljs'));
+                 if (language !== 'plaintext' && block.textContent.trim() !== '') {
+                    block.classList.add(language);
+                    hljs.highlightElement(block);
+                 } else {
+                    block.classList.add('plaintext');
+                 }
+            });
+        }
+
+        // --- Theme Switching ---
+        function applyTheme(isDark) {
+             // ... (applyTheme function remains the same) ...
+             document.documentElement.classList.toggle('dark', isDark);
+             lightThemeLink.disabled = isDark;
+             darkThemeLink.disabled = !isDark;
+             localStorage.setItem('diffViewerTheme', isDark ? 'dark' : 'light');
+             themeToggleButton.textContent = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+        }
+
+        function toggleTheme() {
+            // ... (toggleTheme function remains the same) ...
+            const isDark = document.documentElement.classList.contains('dark');
+            applyTheme(!isDark);
+        }
+
+        // --- Image Export ---
+        function exportToPng() {
+            console.log("exportToPng function called."); // <<< DEBUG LOG 1
+
+            const outputElement = document.getElementById('diff-output');
+
+            // Basic check if there's content to export
+            console.log("Checking if content exists for export..."); // <<< DEBUG LOG 2
+            if (!outputElement || outputElement.children.length === 0 || outputElement.textContent.includes('Enter code above')) {
+                console.error('Export aborted: No diff content found or placeholder text is present.'); // <<< DEBUG LOG 3 (Error Case)
+                return;
+            }
+            console.log("Content found. Proceeding with export."); // <<< DEBUG LOG 4
+
+            // Configure html2canvas options
+             const options = {
+                scale: 2,
+                useCORS: true,
+                logging: false, // Disable logging for cleaner console now
+                backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+            };
+            console.log("html2canvas options:", options); // <<< DEBUG LOG 5
+
+            // Use html2canvas to capture the diff output element
+            console.log("Calling html2canvas..."); // <<< DEBUG LOG 6
+            html2canvas(outputElement, options).then(canvas => {
+                console.log("html2canvas promise resolved successfully."); // <<< DEBUG LOG 7
+                const imageDataUrl = canvas.toDataURL('image/png');
+                console.log("Generated imageDataUrl (first 100 chars):", imageDataUrl.substring(0, 100)); // <<< DEBUG LOG 8
+
+                const link = document.createElement('a');
+                link.href = imageDataUrl;
+                link.download = 'code-diff.png';
+                console.log("Download link created:", link); // <<< DEBUG LOG 9
+
+                document.body.appendChild(link);
+                console.log("Link appended to body."); // <<< DEBUG LOG 10
+                link.click();
+                console.log("Link clicked."); // <<< DEBUG LOG 11
+
+                // --- MODIFICATION START ---
+                // Delay removing the link slightly
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    console.log("Link removed from body (after delay)."); // <<< DEBUG LOG 12 (Modified)
+                }, 100); // Delay by 100 milliseconds
+                // --- MODIFICATION END ---
+
+
+            }).catch(error => {
+                console.error('Error during html2canvas execution:', error); // <<< DEBUG LOG 13 (Error Case)
+            });
+            console.log("Exiting exportToPng function."); // <<< DEBUG LOG 14
+        }
+
+        // --- Event Listeners ---
+        const debouncedRenderDiff = debounce(renderDiff, 300);
+
+        oldCodeEl.addEventListener('input', debouncedRenderDiff);
+        newCodeEl.addEventListener('input', debouncedRenderDiff);
+        languageSelect.addEventListener('change', renderDiff);
+
+        if (exportButton) {
+             console.log("Adding click listener to export button."); // <<< DEBUG LOG (Setup)
+             exportButton.addEventListener('click', exportToPng);
+        } else {
+             console.error("Export button not found!"); // <<< DEBUG LOG (Setup Error)
+        }
+
+        themeToggleButton.addEventListener('click', toggleTheme);
+
+        // --- Initial Setup ---
+        const savedTheme = localStorage.getItem('diffViewerTheme');
+        applyTheme(savedTheme === 'dark');
+
+        oldCodeEl.value = `function greet(name) {\n  console.log("Hello " + name);\n}`;
+        newCodeEl.value = `// Simple greeting function\nfunction greet(name) {\n  console.log(\`Hello, \${name}!\`); // Use template literal\n}\n\ngreet("World");`;
+
+        renderDiff();
+
+    </script>
+
+</body>
+</html>
