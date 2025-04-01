@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Sonifier - User Controls</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        button, select { transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out; }
+        button:disabled, select:disabled, input:disabled { opacity: 0.6; cursor: not-allowed; }
+        select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+        /* Basic slider thumb styling */
+        input[type=range]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: #4f46e5; border-radius: 50%; cursor: pointer; }
+        input[type=range]::-moz-range-thumb { width: 16px; height: 16px; background: #4f46e5; border-radius: 50%; cursor: pointer; border: none; }
+        input[type=range] { accent-color: #4f46e5; } /* For track color */
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-3xl bg-white p-6 rounded-lg shadow-md"> <h1 class="text-2xl font-bold text-center text-gray-800 mb-4">Python Code Sonifier</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 border-b pb-4">
+            <div>
+                <label for="scaleSelect" class="block text-sm font-medium text-gray-700 mb-1">Musical Scale:</label>
+                <select id="scaleSelect" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <option value="cMajPentatonic" selected>C Major Pentatonic</option>
+                    <option value="cMinPentatonic">C Minor Pentatonic</option>
+                    <option value="cBlues">C Blues</option>
+                    <option value="cMajor">C Major</option>
+                     <option value="cMinor">C Minor</option>
+                </select>
+            </div>
+            <div>
+                <label for="speedSelect" class="block text-sm font-medium text-gray-700 mb-1">Playback Speed:</label>
+                <select id="speedSelect" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <option value="1.5">Slow</option>
+                    <option value="1.0" selected>Normal</option>
+                    <option value="0.7">Fast</option>
+                     <option value="0.5">Very Fast</option>
+                </select>
+            </div>
+             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Base Octave:</label>
+                <div class="flex items-center space-x-2">
+                    <button id="octaveDownBtn" class="px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">-</button>
+                    <span id="baseOctaveDisplay" class="text-sm font-medium w-6 text-center">3</span>
+                    <button id="octaveUpBtn" class="px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">+</button>
+                </div>
+            </div>
+            <div>
+                 <label for="droneVolumeSlider" class="block text-sm font-medium text-gray-700 mb-1">Drone:</label>
+                 <div class="flex items-center space-x-3">
+                     <input type="checkbox" id="droneToggle" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" checked>
+                     <input type="range" id="droneVolumeSlider" min="0" max="0.2" step="0.01" value="0.06" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                 </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label for="codeInput" class="block text-sm font-medium text-gray-700 mb-1">Paste your Python code here:</label>
+            <textarea id="codeInput" rows="10"
+                      class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono"
+                      placeholder="# Example demonstrating different elements..."></textarea>
+        </div>
+
+        <div id="visualizerContainer" class="w-full h-24 mb-4">
+             <canvas id="visualizerCanvas"></canvas>
+        </div>
+
+        <div class="flex justify-center space-x-4 mb-4">
+            <button id="playBtn" class="px-5 py-2 bg-indigo-600 text-white font-medium rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Sonify / Play
+            </button>
+            <button id="pauseBtn" class="px-5 py-2 bg-yellow-500 text-white font-medium rounded-md shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400" disabled>
+                Pause
+            </button>
+            <button id="stopBtn" class="px-5 py-2 bg-red-600 text-white font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" disabled>
+                Stop
+            </button>
+        </div>
+
+        <div id="status" class="text-center text-sm text-gray-600 h-5"></div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const codeInput = document.getElementById('codeInput');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const visualizerCanvas = document.getElementById('visualizerCanvas');
+        const visualizerContainer = document.getElementById('visualizerContainer');
+        let canvasCtx = visualizerCanvas.getContext('2d');
+        // Control Elements
+        const scaleSelect = document.getElementById('scaleSelect');
+        const speedSelect = document.getElementById('speedSelect');
+        const octaveDownBtn = document.getElementById('octaveDownBtn');
+        const octaveUpBtn = document.getElementById('octaveUpBtn');
+        const baseOctaveDisplay = document.getElementById('baseOctaveDisplay');
+        const droneToggle = document.getElementById('droneToggle');
+        const droneVolumeSlider = document.getElementById('droneVolumeSlider');
+
+
+        // --- Web Audio API Setup ---
+        let audioCtx = null;
+        let masterGainNode = null;
+        let droneOscillator = null;
+        let droneGainNode = null;
+        let analyserNode = null;
+        let visualizerDataArray = null;
+        let animationFrameId = null;
+
+        // --- Playback State ---
+        let tokens = [];
+        let currentTokenIndex = 0;
+        let isPlaying = false;
+        let isPaused = false;
+        let timeoutId = null;
+        let currentOctave = 3; // Octave used *during* playback, resets each time
+        const minOctave = 2;
+        const maxOctave = 5;
+        const identifierPitchMap = new Map();
+
+        // --- Control States ---
+        let playbackSpeedMultiplier = 1.0; // Normal speed default
+        let selectedScaleName = 'cMajPentatonic'; // Default scale
+        let initialBaseOctave = 3; // User-settable base octave
+        let droneEnabled = true; // Drone on by default
+        let droneVolume = 0.06; // Default drone volume
+
+        // --- Musical Scale Definitions ---
+        // Frequencies calculated using 440Hz A4 reference
+        const baseFreq = { C: 261.63, Cs: 277.18, D: 293.66, Ds: 311.13, E: 329.63, F: 349.23, Fs: 369.99, G: 392.00, Gs: 415.30, A: 440.00, As: 466.16, B: 493.88 };
+        function getFreq(note, octave) {
+            const base = baseFreq[note];
+            if (!base) return 0;
+            // Adjust frequency based on octave relative to octave 4 (where A=440)
+            return base * Math.pow(2, octave - 4);
+        }
+
+        const scalesData = {
+            // Pentatonic Scales (5 notes)
+            cMajPentatonic: { notes: ['C', 'D', 'E', 'G', 'A'], chordIndices: [0, 2, 3] }, // C, E, G are chord tones
+            cMinPentatonic: { notes: ['C', 'Ds', 'F', 'G', 'As'], chordIndices: [0, 1, 3] }, // C, Eb, G are chord tones (Ds=Eb, As=Bb)
+            cBlues:         { notes: ['C', 'Ds', 'F', 'Fs', 'G', 'As'], chordIndices: [0, 1, 4] }, // C, Eb, G (6 notes)
+            // Diatonic Scales (7 notes)
+            cMajor:         { notes: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], chordIndices: [0, 2, 4] }, // C, E, G
+            cMinor:         { notes: ['C', 'D', 'Ds', 'F', 'G', 'Gs', 'As'], chordIndices: [0, 2, 4] }  // C, Eb, G (Natural minor)
+        };
+
+        // Function to get scale frequencies for a specific octave
+        function getScaleFrequencies(scaleName, octave) {
+            const scaleInfo = scalesData[scaleName];
+            if (!scaleInfo) return scalesData['cMajPentatonic'].notes.map(n => getFreq(n, octave)); // Fallback
+            return scaleInfo.notes.map(note => getFreq(note, octave));
+        }
+
+
+        // --- Simple Python Tokenizer ---
+        const tokenPatterns = [ /* ... Same patterns ... */
+            { type: 'COMMENT', regex: /#[^\n]*/ },
+            { type: 'STRING', regex: /(['"])(?:(?!\1).|\\\1)*\1/ },
+            { type: 'KEYWORD', regex: /\b(def|class|return|if|elif|else|for|while|try|except|finally|import|from|pass|break|continue|lambda|yield|with|as|assert|async|await|del|global|nonlocal|in|is|not|and|or)\b/ },
+            { type: 'DECORATOR', regex: /@[a-zA-Z_][a-zA-Z0-9_]*/ },
+            { type: 'NUMBER', regex: /\b\d+(\.\d+)?\b/ },
+            { type: 'OPERATOR', regex: /[+\-*/%=<>!&|^~:]|\*\*|\/\/|!=|==|<=|>=/ },
+            { type: 'IDENTIFIER', regex: /[a-zA-Z_][a-zA-Z0-9_]*/ },
+            { type: 'INDENT_CHECK', regex: /^\s+/m },
+            { type: 'NEWLINE', regex: /\n/ },
+            { type: 'WHITESPACE', regex: /\s+/ },
+            { type: 'BRACKET', regex: /[()\[\]{}]/ },
+        ];
+        function tokenize(code) { /* ... Same tokenize function ... */
+             let remainingCode = code;
+            const foundTokens = [];
+            let currentIndentLevel = 0;
+
+            function getIndentLevel(line) {
+                const match = line.match(/^(\s*)/);
+                return match ? match[1].length : 0;
+            }
+
+            const lines = code.split('\n');
+            lines.forEach((line, lineIndex) => {
+                const lineIndentLevel = getIndentLevel(line);
+                const lineContent = line.trimStart();
+
+                if (lineIndentLevel > currentIndentLevel) {
+                    foundTokens.push({ type: 'INDENT', value: ' ' * (lineIndentLevel - currentIndentLevel) });
+                    currentIndentLevel = lineIndentLevel;
+                } else if (lineIndentLevel < currentIndentLevel) {
+                     foundTokens.push({ type: 'DEDENT', value: '' });
+                     currentIndentLevel = lineIndentLevel;
+                }
+
+                let remainingLine = lineContent;
+                while (remainingLine.length > 0) {
+                    let matchFound = false;
+                    for (const pattern of tokenPatterns) {
+                        if (pattern.type === 'INDENT_CHECK' || pattern.type === 'NEWLINE') continue;
+                        const match = remainingLine.match(pattern.regex);
+                        if (match && match.index === 0) {
+                            const value = match[0];
+                            if (pattern.type !== 'WHITESPACE') {
+                                foundTokens.push({ type: pattern.type, value });
+                            }
+                            remainingLine = remainingLine.substring(value.length);
+                            matchFound = true;
+                            break;
+                        }
+                    }
+                    if (!matchFound) {
+                        console.warn("Tokenizer skipping character:", remainingLine[0]);
+                        remainingLine = remainingLine.substring(1);
+                    }
+                }
+                if (lineIndex < lines.length - 1) {
+                    foundTokens.push({ type: 'NEWLINE', value: '\n' });
+                }
+            });
+            return foundTokens;
+        }
+
+        // --- Hashing function for Identifiers ---
+        function simpleHash(str) { /* ... Same hash function ... */
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = (hash << 5) - hash + char;
+                hash |= 0;
+            }
+            return Math.abs(hash);
+        }
+
+        // --- Sound Mapping ---
+        function getSoundParams(token) {
+            let freq = 0;
+            let duration = 0.18;
+            let volume = 0.3;
+            let attackTime = 0.01;
+            let decayTime = duration - attackTime;
+            let oscType = 'sine';
+            let filterFreq = 6000;
+            let isSilent = false;
+
+            // Use the currently selected scale and octave
+            const scaleInfo = scalesData[selectedScaleName] || scalesData['cMajPentatonic'];
+            const scale = getScaleFrequencies(selectedScaleName, currentOctave);
+            const currentScaleNotesCount = scaleInfo.notes.length;
+            const currentChordIndices = scaleInfo.chordIndices || [0]; // Fallback to root if not defined
+
+            const blockStartingKeywords = ['def', 'class', 'for', 'while', 'if', 'try'];
+
+            switch (token.type) {
+                case 'KEYWORD':
+                    freq = scale[0]; // Root note of the current scale
+                    duration = blockStartingKeywords.includes(token.value) ? 0.30 : 0.22;
+                    volume = blockStartingKeywords.includes(token.value) ? 0.40 : 0.35;
+                    oscType = 'triangle';
+                    filterFreq = 4000;
+                    break;
+                case 'IDENTIFIER':
+                    if (!identifierPitchMap.has(token.value)) {
+                        // Map to a chord tone index based on hash
+                        const hashValue = simpleHash(token.value);
+                        const chordToneIndex = currentChordIndices[hashValue % currentChordIndices.length];
+                        // Ensure the index is valid for the current scale's notes array
+                        const noteIndex = Math.min(chordToneIndex, currentScaleNotesCount - 1);
+                        identifierPitchMap.set(token.value, scale[noteIndex]);
+                    }
+                    freq = identifierPitchMap.get(token.value);
+                    if (!freq) freq = scale[0]; // Fallback if mapping failed
+                    duration = 0.20;
+                    volume = 0.30;
+                    oscType = 'sine';
+                    filterFreq = 5000;
+                    break;
+                case 'NUMBER':
+                     // Use the 5th degree note index (adjusting for scale length)
+                    const fifthIndex = Math.floor(currentScaleNotesCount * 0.7); // Approx 5th
+                    freq = scale[Math.min(fifthIndex, currentScaleNotesCount - 1)];
+                    duration = 0.20;
+                    volume = 0.3;
+                    oscType = 'triangle';
+                    filterFreq = 4500;
+                    break;
+                case 'STRING':
+                     // Use the 3rd degree note index (adjusting for scale length)
+                     const thirdIndex = Math.floor(currentScaleNotesCount * 0.4); // Approx 3rd
+                     freq = scale[Math.min(thirdIndex, currentScaleNotesCount - 1)];
+                    duration = 0.35;
+                    volume = 0.25;
+                    oscType = 'sine';
+                    filterFreq = 3000;
+                    break;
+                // ... (Operator, Bracket, Decorator cases - use scale notes similarly) ...
+                 case 'OPERATOR':
+                 case ':':
+                    // Use a high note from the scale (e.g., second highest) in next octave
+                    const highNoteIndexOp = Math.max(0, currentScaleNotesCount - 2);
+                    const nextOctaveScaleOp = getScaleFrequencies(selectedScaleName, currentOctave + 1);
+                    freq = nextOctaveScaleOp[highNoteIndexOp] || scale[highNoteIndexOp] * 2; // Fallback
+                    duration = 0.08; volume = 0.35; attackTime = 0.002; oscType = 'triangle'; filterFreq = 7000;
+                    break;
+                case 'BRACKET':
+                    // Use second note of scale
+                    const secondIndexBr = Math.min(1, currentScaleNotesCount - 1);
+                     freq = scale[secondIndexBr];
+                     duration = 0.12; volume = 0.2; oscType = 'sine'; attackTime = 0.005; filterFreq = 6000;
+                     break;
+                case 'DECORATOR':
+                     // Use the 5th degree note index again
+                    const fifthIndexDec = Math.floor(currentScaleNotesCount * 0.7);
+                    freq = scale[Math.min(fifthIndexDec, currentScaleNotesCount - 1)];
+                    duration = 0.25; volume = 0.3; oscType = 'triangle'; filterFreq = 4000;
+                    break;
+                case 'COMMENT': duration = 0.30; isSilent = true; break;
+                case 'NEWLINE': duration = 0.15; isSilent = true; break;
+                case 'INDENT':
+                    currentOctave = Math.min(maxOctave, currentOctave + 1);
+                    updateDronePitch(); // Update drone based on new octave and scale
+                    freq = getScaleFrequencies(selectedScaleName, currentOctave)[0]; // Root note
+                    duration = 0.20; volume = 0.15; oscType = 'sine'; filterFreq = 3000;
+                    break;
+                case 'DEDENT':
+                    currentOctave = Math.max(minOctave, currentOctave - 1);
+                    updateDronePitch(); // Update drone based on new octave and scale
+                    freq = getScaleFrequencies(selectedScaleName, currentOctave)[0]; // Root note
+                    duration = 0.20; volume = 0.15; oscType = 'sine'; filterFreq = 3000;
+                    break;
+                default: duration = 0.01; isSilent = true;
+            }
+
+            decayTime = Math.max(0.01, duration - attackTime);
+            if (!isSilent && (!freq || freq === 0)) {
+                 freq = getScaleFrequencies(selectedScaleName, currentOctave)[0]; // Fallback to root
+            }
+            return { freq, duration, volume, attackTime, decayTime, oscType, filterFreq, isSilent };
+        }
+
+
+        // --- Audio Playback Functions ---
+        function playSound(params) { /* ... Same sound playback logic (inc filter) ... */
+            if (!audioCtx || params.isSilent || params.volume === 0 || !params.freq) { // Added !params.freq check
+                return params.duration;
+            }
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = params.oscType;
+            osc.frequency.setValueAtTime(params.freq, now);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(params.filterFreq, now);
+            filter.Q.setValueAtTime(0.5, now);
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(params.volume, now + params.attackTime);
+            gain.gain.linearRampToValueAtTime(0.0001, now + params.attackTime + params.decayTime);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(masterGainNode);
+
+            osc.start(now);
+            osc.stop(now + params.duration + 0.05);
+
+            return params.duration;
+        }
+
+        // --- Drone Control ---
+        function startDrone() {
+            if (!audioCtx || !masterGainNode || !droneEnabled) return; // Check if drone is enabled
+            if (droneOscillator) droneOscillator.stop();
+
+            droneGainNode = audioCtx.createGain();
+            droneGainNode.gain.value = droneVolume; // Use state variable for volume
+            droneGainNode.connect(masterGainNode);
+
+            droneOscillator = audioCtx.createOscillator();
+            droneOscillator.type = 'sine';
+            updateDronePitch(); // Sets initial pitch based on currentOctave and selectedScaleName
+            droneOscillator.connect(droneGainNode);
+            droneOscillator.start(audioCtx.currentTime);
+        }
+        function stopDrone() { /* ... Same drone stop logic ... */
+             if (droneOscillator) {
+                droneOscillator.stop(audioCtx.currentTime);
+                droneOscillator.disconnect();
+                droneOscillator = null;
+            }
+            if (droneGainNode) {
+                droneGainNode.disconnect();
+                droneGainNode = null;
+            }
+        }
+        function updateDronePitch() {
+            if (!droneOscillator) return;
+            // Drone plays the root note of the selected scale in the octave below current
+            const droneOctave = Math.max(minOctave - 1, currentOctave - 1);
+            const droneFreq = getScaleFrequencies(selectedScaleName, droneOctave)[0]; // Root note of selected scale
+            if (droneFreq && droneFreq > 0) {
+                droneOscillator.frequency.linearRampToValueAtTime(droneFreq, audioCtx.currentTime + 0.2);
+            }
+        }
+
+
+        function scheduleNextToken() {
+             if (timeoutId) clearTimeout(timeoutId);
+            if (!isPlaying || isPaused || currentTokenIndex >= tokens.length) {
+                if (currentTokenIndex >= tokens.length && isPlaying) {
+                    stopPlayback();
+                    status.textContent = 'Finished.';
+                }
+                return;
+            }
+
+            const token = tokens[currentTokenIndex];
+            const soundParams = getSoundParams(token);
+
+            const actualDuration = playSound(soundParams);
+
+            // Apply playback speed multiplier to delay
+            const baseDelay = actualDuration * 1000 + 60; // Base delay in ms
+            const delay = baseDelay * playbackSpeedMultiplier; // Apply speed multiplier
+
+            status.textContent = `Playing token ${currentTokenIndex + 1}/${tokens.length}: ${token.type} (Octave: ${currentOctave})`;
+
+            currentTokenIndex++;
+            // Ensure delay is not negative or zero
+            timeoutId = setTimeout(scheduleNextToken, Math.max(10, delay)); // Min 10ms delay
+        }
+
+
+        // --- Visualizer Drawing Function ---
+        function drawVisualizer() { /* ... Same visualizer logic ... */
+             animationFrameId = requestAnimationFrame(drawVisualizer);
+            if (!analyserNode || !visualizerDataArray) return;
+            analyserNode.getByteTimeDomainData(visualizerDataArray);
+
+            canvasCtx.fillStyle = '#f9fafb';
+            canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = 'rgb(79 70 229)';
+            canvasCtx.beginPath();
+
+            const sliceWidth = visualizerCanvas.width * 1.0 / analyserNode.fftSize;
+            let x = 0;
+            for (let i = 0; i < analyserNode.fftSize; i++) {
+                const v = visualizerDataArray[i] / 128.0;
+                const y = v * visualizerCanvas.height / 2;
+                if (i === 0) { canvasCtx.moveTo(x, y); } else { canvasCtx.lineTo(x, y); }
+                x += sliceWidth;
+            }
+            canvasCtx.lineTo(visualizerCanvas.width, visualizerCanvas.height / 2);
+            canvasCtx.stroke();
+        }
+
+        // --- Resize Canvas Function ---
+        function resizeCanvas() { /* ... Same resize logic ... */
+            visualizerCanvas.width = visualizerContainer.clientWidth;
+            visualizerCanvas.height = visualizerContainer.clientHeight;
+            canvasCtx = visualizerCanvas.getContext('2d');
+        }
+
+
+        function initAudio() { /* ... Same init logic including analyser ... */
+            if (!audioCtx) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    masterGainNode = audioCtx.createGain();
+                    masterGainNode.gain.value = 0.7;
+
+                    analyserNode = audioCtx.createAnalyser();
+                    analyserNode.fftSize = 2048;
+                    analyserNode.smoothingTimeConstant = 0.8;
+                    visualizerDataArray = new Uint8Array(analyserNode.fftSize);
+
+                    masterGainNode.connect(analyserNode);
+                    analyserNode.connect(audioCtx.destination);
+
+                    resizeCanvas();
+
+                } catch (e) { /* ... error handling ... */
+                     console.error("Web Audio API is not supported", e);
+                    status.textContent = 'Error: Web Audio API not supported.';
+                    playBtn.disabled = true;
+                    return false;
+                 }
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return true;
+        }
+
+        // --- Enable/Disable Controls ---
+        function setControlsEnabled(enabled) {
+            scaleSelect.disabled = !enabled;
+            speedSelect.disabled = !enabled;
+            octaveDownBtn.disabled = !enabled;
+            octaveUpBtn.disabled = !enabled;
+            droneToggle.disabled = !enabled;
+            droneVolumeSlider.disabled = !enabled || !droneEnabled; // Also disable volume if drone is off
+        }
+
+
+        function startPlayback() {
+             if (isPlaying && !isPaused) return;
+            if (!initAudio()) return;
+
+            if (!isPaused) {
+                // Read control states *before* starting playback
+                playbackSpeedMultiplier = parseFloat(speedSelect.value);
+                selectedScaleName = scaleSelect.value;
+                // initialBaseOctave is already set by buttons/default
+                droneEnabled = droneToggle.checked;
+                droneVolume = parseFloat(droneVolumeSlider.value);
+
+                // Reset playback state
+                 const code = codeInput.value;
+                if (!code.trim()) { status.textContent = 'Error: No code.'; return; }
+                try {
+                    tokens = tokenize(code);
+                    if (tokens.length === 0) { status.textContent = 'Error: Could not tokenize.'; return; }
+                } catch (error) { console.error("Tokenization error:", error); status.textContent = 'Error: Failed to parse.'; return; }
+
+                currentTokenIndex = 0;
+                currentOctave = initialBaseOctave; // Start at the user-set base octave
+                identifierPitchMap.clear();
+            }
+
+            isPlaying = true;
+            isPaused = false;
+            playBtn.disabled = true;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+            setControlsEnabled(false); // Disable controls
+            status.textContent = 'Playing...';
+
+            if(droneEnabled) startDrone(); // Start drone only if enabled
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            drawVisualizer();
+
+            scheduleNextToken();
+        }
+
+        function pausePlayback() {
+            if (!isPlaying || isPaused) return;
+            isPaused = true;
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+            setControlsEnabled(true); // Enable controls
+            status.textContent = 'Paused.';
+            if (timeoutId) clearTimeout(timeoutId);
+            if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+            stopDrone();
+            if (audioCtx) audioCtx.suspend();
+        }
+
+        function stopPlayback() {
+             if (!isPlaying && !isPaused) return;
+
+            isPlaying = false;
+            isPaused = false;
+            currentTokenIndex = 0;
+            // Don't reset initialBaseOctave here, only currentOctave for next playback
+            identifierPitchMap.clear();
+            if (timeoutId) clearTimeout(timeoutId);
+
+             if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+                if (canvasCtx) { canvasCtx.fillStyle = '#f9fafb'; canvasCtx.fillRect(0, 0, visualizerCanvas.width, visualizerCanvas.height); }
+            }
+
+            stopDrone();
+            if (audioCtx && audioCtx.state !== 'closed') {
+                 audioCtx.suspend();
+            }
+
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+            setControlsEnabled(true); // Enable controls
+
+            if (status.textContent !== 'Finished.') {
+                 status.textContent = 'Stopped.';
+            }
+            tokens = [];
+        }
+
+        // --- Control Event Listeners ---
+        speedSelect.addEventListener('change', (e) => {
+            playbackSpeedMultiplier = parseFloat(e.target.value);
+        });
+        scaleSelect.addEventListener('change', (e) => {
+            selectedScaleName = e.target.value;
+            // Update drone pitch immediately if playing (or just wait for next note?)
+            // For simplicity, change will take effect on next play or next indent/dedent
+        });
+        octaveDownBtn.addEventListener('click', () => {
+            if (initialBaseOctave > minOctave) {
+                initialBaseOctave--;
+                baseOctaveDisplay.textContent = initialBaseOctave;
+            }
+        });
+        octaveUpBtn.addEventListener('click', () => {
+             if (initialBaseOctave < maxOctave) {
+                initialBaseOctave++;
+                baseOctaveDisplay.textContent = initialBaseOctave;
+            }
+        });
+        droneToggle.addEventListener('change', (e) => {
+            droneEnabled = e.target.checked;
+            droneVolumeSlider.disabled = !droneEnabled; // Enable/disable slider with toggle
+            if (!droneEnabled && isPlaying) {
+                stopDrone(); // Stop drone immediately if unchecked during playback
+            } else if (droneEnabled && isPlaying && !isPaused) {
+                 startDrone(); // Start drone immediately if checked during playback
+            }
+        });
+        droneVolumeSlider.addEventListener('input', (e) => { // Use 'input' for live update
+            droneVolume = parseFloat(e.target.value);
+            if (droneGainNode) {
+                // Update live if drone is playing
+                droneGainNode.gain.linearRampToValueAtTime(droneVolume, audioCtx.currentTime + 0.1);
+            }
+        });
+
+
+        // --- Core Playback Listeners ---
+        playBtn.addEventListener('click', startPlayback);
+        pauseBtn.addEventListener('click', pausePlayback);
+        stopBtn.addEventListener('click', stopPlayback);
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- Initial Setup ---
+        baseOctaveDisplay.textContent = initialBaseOctave; // Set initial display
+        droneVolumeSlider.value = droneVolume; // Set initial slider position
+        droneToggle.checked = droneEnabled; // Set initial checkbox state
+        droneVolumeSlider.disabled = !droneEnabled; // Set initial slider disabled state
+
+    </script>
+
+</body>
+</html>
