@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueSky Thread Composer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      @font-face {
+        font-family: 'LucideIcons';
+        src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype');
+      }
+      .lucide {
+        font-family: 'LucideIcons';
+        font-style: normal;
+        font-weight: normal;
+        font-variant: normal;
+        text-rendering: auto;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      /* Basic styles */
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      /* Style for the copy icon */
+      .icon-copy::before {
+        content: "\e98e"; /* Lucide 'copy' icon code */
+      }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-sky-100 to-indigo-200 min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="bg-white rounded-xl shadow-xl p-6 md:p-8 w-full max-w-3xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-center mb-6 text-sky-800">BlueSky Thread Composer</h1>
+
+        <div class="mb-6">
+            <label for="longMessage" class="block text-sm font-medium text-gray-700 mb-1">Enter your full message:</label>
+            <textarea id="longMessage" rows="8" class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 transition duration-150 ease-in-out" placeholder="Paste or type your long message here..."></textarea>
+            <p id="inputCharCount" class="text-sm text-right text-gray-500 mt-1">Character count: 0</p>
+        </div>
+
+        <div class="text-center mb-8">
+            <button id="splitButton" class="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-6 rounded-md shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                Split into Thread
+            </button>
+        </div>
+
+        <div id="outputArea" class="space-y-4">
+            <p id="outputPlaceholder" class="text-center text-gray-500 italic">Your split posts will appear here.</p>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const longMessageTextarea = document.getElementById('longMessage');
+            const inputCharCount = document.getElementById('inputCharCount');
+            const splitButton = document.getElementById('splitButton');
+            const outputArea = document.getElementById('outputArea');
+            const outputPlaceholder = document.getElementById('outputPlaceholder');
+
+            const BLUESKY_LIMIT = 300; // BlueSky character limit
+
+            // Update input character count dynamically
+            longMessageTextarea.addEventListener('input', () => {
+                inputCharCount.textContent = `Character count: ${longMessageTextarea.value.length}`;
+            });
+
+            // --- Splitting Logic ---
+            splitButton.addEventListener('click', () => {
+                const fullText = longMessageTextarea.value.trim();
+                outputArea.innerHTML = ''; // Clear previous results
+
+                if (!fullText) {
+                    outputPlaceholder.textContent = 'Input is empty. Please enter some text.';
+                    outputArea.appendChild(outputPlaceholder);
+                    return;
+                }
+
+                // Hide placeholder if it exists
+                if (outputPlaceholder) outputPlaceholder.style.display = 'none';
+
+                // 1. Initial Check: If text is within limit, create one post
+                if (fullText.length <= BLUESKY_LIMIT) {
+                    displayPost(fullText, 1, 1);
+                    return;
+                }
+
+                // 2. Estimate Post Count & Indicator Length
+                // Assume max 99 posts for indicator length calculation initially.
+                // "(99/99)" is 7 chars. Add 1 for the space before it = 8.
+                // A more dynamic calculation could be done, but this is safe for most cases.
+                const maxIndicatorLength = fullText.length > BLUESKY_LIMIT * 9 ? 9 : (fullText.length > BLUESKY_LIMIT * 99 ? 11 : 7); // e.g., (9/9)=5, (99/99)=7, (999/999)=9. Add space later.
+                const effectiveLimit = BLUESKY_LIMIT - (maxIndicatorLength + 1); // +1 for the space before '('
+
+                // 3. Splitting Algorithm
+                const posts = [];
+                let remainingText = fullText;
+
+                while (remainingText.length > 0) {
+                    // If remaining text fits within the effective limit, it's the last post
+                    if (remainingText.length <= effectiveLimit) {
+                        posts.push(remainingText);
+                        remainingText = ''; // Exit loop
+                        break;
+                    }
+
+                    // Take a chunk up to the effective limit
+                    let chunk = remainingText.substring(0, effectiveLimit);
+                    let splitPoint = -1;
+
+                    // Find the last whitespace to split at (prefer breaking at space/newline)
+                    for (let i = chunk.length - 1; i >= 0; i--) {
+                        if (/\s/.test(chunk[i])) { // Check for space, tab, newline etc.
+                            splitPoint = i;
+                            break;
+                        }
+                    }
+
+                    let postText;
+                    if (splitPoint !== -1) {
+                        // Found whitespace: split after it
+                        postText = remainingText.substring(0, splitPoint).trimEnd(); // Trim trailing space from the split
+                        remainingText = remainingText.substring(splitPoint).trimStart(); // Trim leading space from the remainder
+                    } else {
+                        // No whitespace found in the chunk: split at the effective limit (mid-word)
+                        postText = chunk;
+                        remainingText = remainingText.substring(effectiveLimit).trimStart();
+                    }
+
+                    // Ensure we don't add empty posts if splitting resulted in only whitespace
+                    if (postText) {
+                       posts.push(postText);
+                    }
+
+                     // Safety break to prevent infinite loops in unexpected scenarios
+                    if (posts.length > 1000) {
+                         console.error("Potential infinite loop detected in splitting logic.");
+                         outputArea.innerHTML = '<p class="text-red-600 text-center font-semibold">An error occurred during splitting. Please check your input or simplify the text.</p>';
+                         return;
+                    }
+                }
+
+                // 4. Final Formatting and Validation
+                const totalPosts = posts.length;
+                posts.forEach((post, index) => {
+                    const postNumber = index + 1;
+                    const indicator = ` (${postNumber}/${totalPosts})`;
+                    let finalPostText = post + indicator;
+
+                    // Final length check (should rarely fail due to effectiveLimit calculation)
+                    if (finalPostText.length > BLUESKY_LIMIT) {
+                        console.warn(`Post ${postNumber} exceeded limit after adding indicator. Trimming.`);
+                        // Simple trim strategy: Shorten the original post text part
+                        const overflow = finalPostText.length - BLUESKY_LIMIT;
+                        finalPostText = post.substring(0, post.length - overflow) + indicator;
+                         // Potentially add a visual warning to the user for this post
+                    }
+                    displayPost(finalPostText, postNumber, totalPosts);
+                });
+            });
+
+            // --- Helper Function to Display a Post ---
+            function displayPost(text, number, total) {
+                const postDiv = document.createElement('div');
+                postDiv.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50 shadow-sm';
+
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'flex justify-between items-center mb-2';
+
+                const title = document.createElement('span');
+                title.className = 'font-semibold text-sky-700';
+                title.textContent = `Post ${number}/${total}`;
+
+                const charCount = document.createElement('span');
+                charCount.className = `text-sm ${text.length > BLUESKY_LIMIT ? 'text-red-600 font-bold' : 'text-gray-500'}`;
+                charCount.textContent = `${text.length}/${BLUESKY_LIMIT} chars`;
+
+                headerDiv.appendChild(title);
+                headerDiv.appendChild(charCount);
+
+                const contentTextarea = document.createElement('textarea');
+                contentTextarea.rows = Math.max(3, Math.ceil(text.length / 60)); // Estimate rows needed
+                contentTextarea.readOnly = true;
+                contentTextarea.className = 'w-full p-2 border border-gray-200 rounded-md bg-white text-gray-800 text-sm font-mono resize-none'; // Monospace for consistent char width
+                contentTextarea.value = text;
+
+                const copyButton = document.createElement('button');
+                copyButton.className = 'mt-2 flex items-center justify-center gap-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-1 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1 transition duration-150 ease-in-out';
+                // Using Lucide icon font class
+                copyButton.innerHTML = '<span class="lucide icon-copy text-xs"></span> Copy';
+
+                copyButton.addEventListener('click', () => {
+                    navigator.clipboard.writeText(text)
+                        .then(() => {
+                            copyButton.innerHTML = '<span class="lucide icon-copy text-xs"></span> Copied!';
+                            copyButton.classList.replace('bg-gray-200', 'bg-green-200');
+                            copyButton.classList.replace('text-gray-700', 'text-green-800');
+                            setTimeout(() => {
+                                copyButton.innerHTML = '<span class="lucide icon-copy text-xs"></span> Copy';
+                                copyButton.classList.replace('bg-green-200','bg-gray-200');
+                                copyButton.classList.replace('text-green-800','text-gray-700');
+                            }, 1500); // Reset after 1.5 seconds
+                        })
+                        .catch(err => {
+                            console.error('Failed to copy text: ', err);
+                            copyButton.textContent = 'Error Copying';
+                             copyButton.classList.replace('bg-gray-200', 'bg-red-200');
+                             copyButton.classList.replace('text-gray-700', 'text-red-800');
+                             setTimeout(() => {
+                                copyButton.innerHTML = '<span class="lucide icon-copy text-xs"></span> Copy';
+                                copyButton.classList.replace('bg-red-200','bg-gray-200');
+                                copyButton.classList.replace('text-red-800','text-gray-700');
+                            }, 2000);
+                        });
+                });
+
+                postDiv.appendChild(headerDiv);
+                postDiv.appendChild(contentTextarea);
+                postDiv.appendChild(copyButton);
+                outputArea.appendChild(postDiv);
+            }
+        });
+    </script>
+
+</body>
+</html>
