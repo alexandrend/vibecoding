@@ -1,0 +1,4 @@
+[
+    {"id": "AVID1", "name": "AVID I", "subject": "Elective", "credits": 1.0, "gradeLevels": [9], "prerequisites": [], "endorsements": [], "description": "College readiness program focusing on academic skills.", "availableInMiddleSchool": false},
+    {"id": "JROTC1", "name": "JROTC I (Generic)", "subject": "Elective", "credits": 1.0, "gradeLevels": [9], "prerequisites": [], "endorsements": ["PublicService"], "description": "Leadership education program. Can substitute PE.", "availableInMiddleSchool": false}
+]
