@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RRISD 4-Year Graduation Planner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script> <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -25,12 +24,12 @@
     <div id="root"></div>
 
     <script type="text/babel">
-// Ensure React and ReactDOM are available from CDN
+// ** REMOVED the incorrect 'import React...' line from here **
+
+// Ensure React and ReactDOM are available from CDN - Destructure hooks from the global React object
 const { useState, useEffect, useCallback, useMemo } = React;
 
 // --- Data (Graduation Plans, Endorsements, Subject Map - Course Data is now loaded) ---
-
-// NOTE: coursesData constant is REMOVED. It will be loaded dynamically.
 
 const graduationPlansData = {
   foundation: {
@@ -93,10 +92,6 @@ const subjectMap = {
     'CTE/Elective': 'Electives',
     'Elective': 'Electives',
 };
-
-// --- Utility Functions ---
-// NOTE: These functions now need access to the loaded course data (`allCoursesData`)
-// They are defined inside the App component or accept the data as an argument.
 
 // --- Components ---
 
@@ -251,7 +246,6 @@ const CourseSelector = ({ title, availableCourses, onSelectCourse, onClose, show
 };
 
 // Displays the plan for a single year
-// Needs access to findCourseById and checkPrerequisites (or the data needed for them)
 const YearPlan = ({
     year,
     selectedCoursesInYear,
@@ -271,45 +265,25 @@ const YearPlan = ({
 
      // Filter available courses for the selector for *this* year
      const availableCoursesForSelector = useMemo(() => {
-         // Combine all selected IDs (MS + all HS years) to check for already selected
          const allSelectedIds = new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]);
-
-         // Filter the master list of all courses
          return allCourses.filter(course => {
-             // Basic checks
              if (!course || !course.gradeLevels || !course.id || !course.name) return false;
-
-             // Check grade level eligibility for the current year plan
-             if (!course.gradeLevels.includes(year)) {
-                 return false;
-             }
-             // Check if already selected (anywhere, including MS)
-             if (allSelectedIds.has(course.id)) {
-                  return false;
-             }
-             // Check prerequisites *before* showing in the list
-             // Pass allCoursesData to checkPrerequisites here
+             if (!course.gradeLevels.includes(year)) return false;
+             if (allSelectedIds.has(course.id)) return false;
              const prereqCheckResult = checkPrerequisites(course.id, selectedCoursesByYear, middleSchoolCredits, year, allCourses);
-             if (!prereqCheckResult.met) {
-                 return false; // Don't show if prerequisites aren't met
-             }
-             return true; // If all checks pass, include the course
+             if (!prereqCheckResult.met) return false;
+             return true;
          });
-     }, [allCourses, year, middleSchoolCredits, selectedCoursesByYear, checkPrerequisites]); // Dependencies
+     }, [allCourses, year, middleSchoolCredits, selectedCoursesByYear, checkPrerequisites]);
 
 
     const handleAddCourse = (courseId) => {
         const course = findCourseById(courseId);
         if (!course) return;
-
-        // Prerequisite check is handled by filtering logic above.
-        // Add the course via the callback passed from App
         addCourse(year, courseId);
-        setShowSelector(false); // Close selector on successful add
-
-        // Optional: Check for co-requisite warnings after adding
+        setShowSelector(false);
         if (course.coRequisites && course.coRequisites.length > 0) {
-             const currentYearCoursesPlusNew = new Set([...(selectedCoursesByYear[year] || []), courseId]); // Include the newly added course
+             const currentYearCoursesPlusNew = new Set([...(selectedCoursesByYear[year] || []), courseId]);
              const metCoReqs = course.coRequisites.every(reqId => currentYearCoursesPlusNew.has(reqId));
              if (!metCoReqs) {
                  const coReqNames = course.coRequisites.map(id => findCourseById(id)?.name || id).join(', ');
@@ -347,7 +321,7 @@ const YearPlan = ({
                     availableCourses={availableCoursesForSelector}
                     onSelectCourse={handleAddCourse}
                     onClose={() => setShowSelector(false)}
-                    showGradeFilter={false} // Grade is fixed for YearPlan selector
+                    showGradeFilter={false}
                 />
             )}
         </div>
@@ -355,7 +329,6 @@ const YearPlan = ({
 };
 
 // Component to manage Middle School Credits
-// Needs access to findCourseById and allCourses data
 const MiddleSchoolCredits = ({
     middleSchoolCredits,
     addMiddleSchoolCredit,
@@ -364,25 +337,21 @@ const MiddleSchoolCredits = ({
     findCourseById // Pass the helper function
 }) => {
     const [showSelector, setShowSelector] = useState(false);
-
-    // Get full course objects for selected MS credits
     const msCourses = middleSchoolCredits.map(findCourseById).filter(Boolean);
 
-    // Filter courses potentially available in Middle School
     const availableCoursesForSelector = useMemo(() => {
         const selectedIds = new Set(middleSchoolCredits);
-        // Filter from the master list of all courses
         return allCourses.filter(course =>
-            course && // Ensure course object exists
-            !selectedIds.has(course.id) && // Not already selected
-            (course.availableInMiddleSchool === true || // Explicitly flagged
-             (course.gradeLevels?.includes(9) && (!course.prerequisites || course.prerequisites.length === 0))) // Or Grade 9 with no prereqs
+            course &&
+            !selectedIds.has(course.id) &&
+            (course.availableInMiddleSchool === true ||
+             (course.gradeLevels?.includes(9) && (!course.prerequisites || course.prerequisites.length === 0)))
         );
-    }, [allCourses, middleSchoolCredits]); // Depend on the full course list and selected MS credits
+    }, [allCourses, middleSchoolCredits]);
 
     const handleAddCredit = (courseId) => {
         addMiddleSchoolCredit(courseId);
-        setShowSelector(false); // Close after adding
+        setShowSelector(false);
     };
 
     return (
@@ -415,7 +384,7 @@ const MiddleSchoolCredits = ({
                     availableCourses={availableCoursesForSelector}
                     onSelectCourse={handleAddCredit}
                     onClose={() => setShowSelector(false)}
-                    showGradeFilter={false} // Grade filter not relevant here
+                    showGradeFilter={false}
                 />
             )}
         </div>
@@ -429,16 +398,11 @@ const GraduationProgress = ({ credits, plan }) => {
 
     const requirements = plan.requirements;
     const totalRequired = plan.totalCredits;
-
-    // Calculate remaining elective need based on total requirement vs current total in *required* categories
      const currentTotalInRequiredCategories = Object.entries(credits)
          .filter(([key]) => key !== 'Electives' && key !== 'Total' && requirements[key] !== undefined)
-         // Sum credits applied to required categories, capped at the required amount for each category
          .reduce((sum, [key, value]) => sum + Math.min(value, requirements[key]), 0);
-
-     // Calculate the elective credits needed to reach the total plan credits
      const requiredElectives = Math.max(0, totalRequired - currentTotalInRequiredCategories);
-     const electiveProgress = credits.Electives; // Use directly calculated electives from calculateCredits
+     const electiveProgress = credits.Electives;
 
     return (
         <div className="p-4 bg-blue-50 rounded-lg shadow h-full">
@@ -447,23 +411,19 @@ const GraduationProgress = ({ credits, plan }) => {
                 {Object.entries(requirements).map(([subjectKey, required]) => {
                     const current = credits[subjectKey] || 0;
                     const isMet = current >= required;
-                    // Special handling for electives display
                     if (subjectKey === 'Electives') {
-                         const displayRequired = requiredElectives; // Show calculated need
+                         const displayRequired = requiredElectives;
                          const displayCurrent = electiveProgress;
-                         // Elective requirement is met if the earned electives meet or exceed the calculated need
                          const displayIsMet = displayCurrent >= displayRequired;
                          return (
                              <div key={subjectKey} className="text-sm">
                                  <span className="font-medium">{subjectKey}:</span> {displayCurrent.toFixed(1)} / {displayRequired.toFixed(1)} Credits Needed
                                  <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${displayIsMet ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
-                                     {displayIsMet ? 'Met' : 'In Progress'} {/* Changed 'Needed' to 'In Progress' for clarity */}
+                                     {displayIsMet ? 'Met' : 'In Progress'}
                                  </span>
                              </div>
                          );
                     }
-
-                    // Regular subject display
                     return (
                         <div key={subjectKey} className="text-sm">
                             <span className="font-medium">{subjectKey}:</span> {current.toFixed(1)} / {required.toFixed(1)} Credits
@@ -485,13 +445,11 @@ const GraduationProgress = ({ credits, plan }) => {
 };
 
 // Displays DLA status and guidance
-// Needs access to findCourseById
 const DLAGuidance = ({ selectedCoursesByYear, middleSchoolCredits, planType, findCourseById }) => {
-     if (planType !== 'dla') return null; // Only show for DLA plan
+     if (planType !== 'dla') return null;
 
     const allSelectedIds = useMemo(() => new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]), [middleSchoolCredits, selectedCoursesByYear]);
     const hasAlgebra2 = graduationPlansData.dla.specificCourses.some(id => allSelectedIds.has(id));
-    // Use findCourseById passed from App
     const algebra2Course = findCourseById('ALG2') || findCourseById('ALG2ADV');
 
     return (
@@ -503,23 +461,20 @@ const DLAGuidance = ({ selectedCoursesByYear, middleSchoolCredits, planType, fin
                     : `✗ Algebra II requirement NOT met. Consider adding "${algebra2Course?.name || 'Algebra II'}".`
                 }
             </p>
-             {/* Add checks for 4 Math & 4 Science if needed, though GraduationProgress covers credit counts */}
         </div>
     );
 };
 
 // Displays potential endorsements (Simplified Check)
 const EndorsementTracker = ({ selectedCoursesByYear, middleSchoolCredits, planType }) => {
-     if (planType === 'foundation') return null; // No endorsements for basic foundation
+     if (planType === 'foundation') return null;
 
     const allSelectedIds = useMemo(() => new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]), [middleSchoolCredits, selectedCoursesByYear]);
 
     const potentialEndorsements = useMemo(() => {
         return Object.entries(endorsementsData)
             .map(([key, data]) => {
-                // Simplified Check: Does the student have at least one 'key' course for this endorsement?
                 const hasKeyCourse = data.keyCourses.some(courseId => allSelectedIds.has(courseId));
-                // More complex logic needed here for sequence validation in a real app
                 return hasKeyCourse ? data.name : null;
             })
             .filter(Boolean);
@@ -546,21 +501,19 @@ const EndorsementTracker = ({ selectedCoursesByYear, middleSchoolCredits, planTy
 
 function App() {
     // --- State ---
-    const [selectedPlanType, setSelectedPlanType] = useState('dla'); // Default to DLA
+    const [selectedPlanType, setSelectedPlanType] = useState('dla');
     const [selectedCourses, setSelectedCourses] = useState({ 9: [], 10: [], 11: [], 12: [] });
     const [middleSchoolCredits, setMiddleSchoolCredits] = useState([]);
     const [warnings, setWarnings] = useState([]);
-    const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks if initial localStorage load attempt is done
+    const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [isClient, setIsClient] = useState(false);
-
-    // State for loaded course data
-    const [allCoursesData, setAllCoursesData] = useState([]); // Holds data from JSON files
-    const [isLoading, setIsLoading] = useState(true); // Tracks if JSON data is loading
-    const [loadingError, setLoadingError] = useState(null); // Stores JSON loading errors
+    const [allCoursesData, setAllCoursesData] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadingError, setLoadingError] = useState(null);
 
     // --- Effects ---
 
-    // Effect to mark client-side rendering and load html2canvas script
+    // Effect for client-side check and script loading
     useEffect(() => {
        setIsClient(true);
        const scriptId = 'html2canvas-script';
@@ -581,7 +534,6 @@ function App() {
             const savedPlan = localStorage.getItem('graduationPlan');
             const savedCourses = localStorage.getItem('selectedCourses');
             const savedMsCredits = localStorage.getItem('middleSchoolCredits');
-
             if (savedPlan) setSelectedPlanType(savedPlan);
             if (savedCourses) {
                 try {
@@ -600,7 +552,7 @@ function App() {
                  } catch (e) { localStorage.removeItem('middleSchoolCredits'); }
              }
         }
-         setIsDataLoaded(true); // Mark initial load attempt complete
+         setIsDataLoaded(true);
     }, [isClient]);
 
     // Effect to save selections to localStorage
@@ -612,67 +564,48 @@ function App() {
          }
     }, [selectedPlanType, selectedCourses, middleSchoolCredits, isDataLoaded, isClient]);
 
-    // Effect to fetch course data from JSON files on mount
+    // Effect to fetch course data from JSON files
     useEffect(() => {
         const fetchCourseData = async () => {
-            // Use the filenames provided by the user
             const files = [
-                'ela_courses.json',
-                'math_courses.json',
-                'science_courses.json',
-                'social_study_courses.json', // Use the user's filename
-                'lote_courses.json',
-                'art_courses.json',         // Use the user's filename
-                'pe_courses.json',
-                'cte_elective_courses.json',// Use the user's filename
-                'elective_courses.json'     // Use the user's filename
+                'ela_courses.json', 'math_courses.json', 'science_courses.json',
+                'social_study_courses.json', 'lote_courses.json', 'art_courses.json',
+                'pe_courses.json', 'cte_elective_courses.json', 'elective_courses.json'
             ];
-            setIsLoading(true); // Start loading
-            setLoadingError(null); // Reset error
-
+            setIsLoading(true);
+            setLoadingError(null);
             try {
                 const fetchPromises = files.map(file =>
                     fetch(file).then(response => {
-                        if (!response.ok) {
-                            // Provide more specific error info
-                            throw new Error(`Failed to load ${file}: ${response.status} ${response.statusText}`);
-                        }
+                        if (!response.ok) throw new Error(`Failed to load ${file}: ${response.status} ${response.statusText}`);
                         return response.json();
                     })
                 );
-
                 const results = await Promise.all(fetchPromises);
-                const combinedCourses = results.flat(); // Combine arrays from all files
-                setAllCoursesData(combinedCourses); // Store combined data in state
+                const combinedCourses = results.flat();
+                setAllCoursesData(combinedCourses);
                 console.log("Course data loaded successfully:", combinedCourses.length, "courses");
             } catch (error) {
                 console.error("Failed to load course data:", error);
-                // Set a user-friendly error message
                 setLoadingError(`Error loading course data: ${error.message}. Check console and ensure JSON files exist and are accessible.`);
-                setAllCoursesData([]); // Ensure data is cleared on error
+                setAllCoursesData([]);
             } finally {
-                setIsLoading(false); // Finish loading (success or fail)
+                setIsLoading(false);
             }
         };
-
         fetchCourseData();
-    }, []); // Empty dependency array means this runs once when the component mounts
+    }, []);
 
 
-    // --- Utility Functions (Defined within App to access state/props easily) ---
+    // --- Utility Functions ---
 
-    // Finds a course object by its ID using the loaded data
     const findCourseById = useCallback((id) => {
         return allCoursesData.find(course => course.id === id);
-    }, [allCoursesData]); // Dependency: Recreate if course data changes
+    }, [allCoursesData]);
 
-    // Checks if prerequisites for a course are met
-    // Now accepts allCoursesData as an argument
     const checkPrerequisites = useCallback((courseId, selectedCoursesByYear, middleSchoolCredits = [], targetYear, coursesData) => {
-        const course = coursesData.find(c => c.id === courseId); // Find course in passed data
-        if (!course || !course.prerequisites || course.prerequisites.length === 0) {
-            return { met: true, message: '' };
-        }
+        const course = coursesData.find(c => c.id === courseId);
+        if (!course || !course.prerequisites || course.prerequisites.length === 0) return { met: true, message: '' };
 
         const completedCourseIds = new Set([
             ...middleSchoolCredits,
@@ -680,7 +613,6 @@ function App() {
                 .filter(([year]) => parseInt(year) < targetYear)
                 .flatMap(([, courses]) => courses)
         ]);
-
         let prerequisitesMet = true;
         let unmetMessages = [];
         const requiredSets = course.prerequisites.map(prereq => prereq.split('||').map(s => s.trim()));
@@ -689,13 +621,10 @@ function App() {
             const metThisSet = reqSet.some(reqId => completedCourseIds.has(reqId));
             if (!metThisSet) {
                 prerequisitesMet = false;
-                // Use findCourseById (which uses allCoursesData state) for names
                 const courseNames = reqSet.map(id => findCourseById(id)?.name || id).join(' OR ');
                 unmetMessages.push(`Requires ${courseNames}`);
             }
         }
-
-        // Simplified Co-requisite check (warning only)
         if (course.coRequisites && course.coRequisites.length > 0) {
             const currentYearCourses = new Set(selectedCoursesByYear[targetYear] || []);
             const metCoReqs = course.coRequisites.every(reqId => currentYearCourses.has(reqId));
@@ -704,12 +633,9 @@ function App() {
                  unmetMessages.push(`(Co-requisite suggested: ${coReqNames} in the same year)`);
              }
         }
-
         return { met: prerequisitesMet, message: unmetMessages.join('. ') };
-    }, [findCourseById]); // Dependency: findCourseById (which depends on allCoursesData)
+    }, [findCourseById]);
 
-    // Calculates credits earned per subject
-    // Now accepts allCoursesData as an argument
     const calculateCredits = useCallback((selectedCoursesByYear, middleSchoolCredits = [], coursesData) => {
         const credits = { ELA: 0, Math: 0, Science: 0, SocialStudies: 0, LOTE: 0, FineArts: 0, PE: 0, Electives: 0, Total: 0 };
         const uniqueCourseIds = new Set();
@@ -717,41 +643,31 @@ function App() {
 
         allCourseIds.forEach(courseId => {
             if (uniqueCourseIds.has(courseId)) return;
-
-            const course = coursesData.find(c => c.id === courseId); // Find in passed data
+            const course = coursesData.find(c => c.id === courseId);
             if (course) {
                 uniqueCourseIds.add(courseId);
                 const subjectCategory = subjectMap[course.subject] || 'Electives';
                 let credited = false;
                 const maxRequired = graduationPlansData.dla.requirements[subjectCategory] || 0;
 
-                // LOTE Substitution
                 if (course.endorsements?.includes('LOTE Sub') && credits.LOTE < graduationPlansData.dla.requirements.LOTE) {
-                     credits.LOTE += course.credits;
-                     credited = true;
-                }
-                // Apply to primary subject if needed
-                else if (subjectCategory !== 'Electives' && credits[subjectCategory] < maxRequired) {
+                     credits.LOTE += course.credits; credited = true;
+                } else if (subjectCategory !== 'Electives' && credits[subjectCategory] < maxRequired) {
                      const creditToAdd = Math.min(course.credits, maxRequired - credits[subjectCategory]);
                      credits[subjectCategory] += creditToAdd;
                      const remainingCredit = course.credits - creditToAdd;
                      if (remainingCredit > 0) credits.Electives += remainingCredit;
                      credited = true;
                 }
-                // Apply to Electives if not credited elsewhere
-                if (!credited) {
-                     credits.Electives += course.credits;
-                }
+                if (!credited) credits.Electives += course.credits;
                  credits.Total += course.credits;
             }
         });
         return credits;
-    }, []); // No direct state dependencies here, but uses data passed in
+    }, []);
 
 
     // --- Callbacks ---
-
-    // Add course to a specific HS year
     const addCourse = useCallback((year, courseId) => {
         if (middleSchoolCredits.includes(courseId)) {
             setWarnings(prev => [...new Set([...prev, `${findCourseById(courseId)?.name || courseId} was already added as a Middle School credit.`])]);
@@ -759,55 +675,38 @@ function App() {
         }
         setSelectedCourses(prev => {
             const yearCourses = prev[year] || [];
-            if (!yearCourses.includes(courseId)) {
-                return { ...prev, [year]: [...yearCourses, courseId] };
-            }
-            return prev;
+            return !yearCourses.includes(courseId) ? { ...prev, [year]: [...yearCourses, courseId] } : prev;
         });
          const courseName = findCourseById(courseId)?.name || courseId;
          setWarnings(prev => prev.filter(w => !w.includes(`Prerequisite check for ${courseName}`)));
          setWarnings(prev => prev.filter(w => !w.includes(`Co-requisite suggested for ${courseName}`)));
     }, [middleSchoolCredits, findCourseById]);
 
-    // Remove course from a specific HS year
     const removeCourse = useCallback((year, courseId) => {
-        setSelectedCourses(prev => ({
-            ...prev,
-            [year]: (prev[year] || []).filter(id => id !== courseId)
-        }));
+        setSelectedCourses(prev => ({ ...prev, [year]: (prev[year] || []).filter(id => id !== courseId) }));
     }, []);
 
-     // Add a course credit earned in Middle School
      const addMiddleSchoolCredit = useCallback((courseId) => {
          const alreadyInHS = Object.values(selectedCourses).flat().includes(courseId);
          if (alreadyInHS) {
              setWarnings(prev => [...new Set([...prev, `${findCourseById(courseId)?.name || courseId} is already selected in your High School plan.`])]);
              return;
          }
-         setMiddleSchoolCredits(prev => {
-             if (!prev.includes(courseId)) {
-                 return [...prev, courseId];
-             }
-             return prev;
-         });
+         setMiddleSchoolCredits(prev => !prev.includes(courseId) ? [...prev, courseId] : prev);
      }, [selectedCourses, findCourseById]);
 
-      // Remove a course credit earned in Middle School
      const removeMiddleSchoolCredit = useCallback((courseId) => {
          setMiddleSchoolCredits(prev => prev.filter(id => id !== courseId));
      }, []);
 
-     const clearWarnings = useCallback(() => {
-         setWarnings([]);
-     }, []);
+     const clearWarnings = useCallback(() => setWarnings([]), []);
 
-    // Memoized calculation for display data (depends on loaded courses)
+    // Memoized calculation for display data
     const displayData = useMemo(() => {
         const planDetails = graduationPlansData[selectedPlanType];
-        // Pass allCoursesData to calculateCredits
         const credits = calculateCredits(selectedCourses, middleSchoolCredits, allCoursesData);
         return { credits, planDetails };
-    }, [selectedPlanType, selectedCourses, middleSchoolCredits, allCoursesData, calculateCredits]); // Add dependencies
+    }, [selectedPlanType, selectedCourses, middleSchoolCredits, allCoursesData, calculateCredits]);
 
     // PNG Export Handler
     const handleExportPNG = useCallback(() => {
@@ -815,14 +714,10 @@ function App() {
         const exportContent = document.getElementById('plan-export-content');
         if (exportContent && typeof window.html2canvas === 'function') {
             console.log("html2canvas function found, attempting render...");
-            exportContent.classList.add('exporting-png'); // Add class for styling during export
-            setTimeout(() => { // Timeout allows styles to apply briefly
-                window.html2canvas(exportContent, {
-                    scale: 2,
-                    useCORS: true,
-                    logging: true,
-                    backgroundColor: '#f9fafb', // Ensure background color is set
-                 }).then(canvas => {
+            exportContent.classList.add('exporting-png');
+            setTimeout(() => {
+                window.html2canvas(exportContent, { scale: 2, useCORS: true, logging: true, backgroundColor: '#f9fafb' })
+                 .then(canvas => {
                     console.log("html2canvas generated canvas");
                     const image = canvas.toDataURL('image/png');
                     const link = document.createElement('a');
@@ -830,13 +725,13 @@ function App() {
                     link.href = image;
                     link.click();
                     console.log("Download triggered.");
-                    exportContent.classList.remove('exporting-png'); // Remove class after export
+                    exportContent.classList.remove('exporting-png');
                 }).catch(err => {
                     console.error("Error generating PNG:", err);
                     setWarnings(prev => [...new Set([...prev, `Error generating PNG: ${err.message}. Check console.`])]);
                     exportContent.classList.remove('exporting-png');
                 });
-            }, 100); // Small delay
+            }, 100);
         } else if (!exportContent){
             console.error("Export content area 'plan-export-content' not found");
             setWarnings(prev => [...new Set([...prev, "Could not find content to export."])]);
@@ -844,33 +739,22 @@ function App() {
              console.error("html2canvas is not loaded or not a function.");
              setWarnings(prev => [...new Set([...prev, "PNG Export library (html2canvas) not loaded. Please wait or check console."])]);
         }
-    }, [displayData.planDetails?.name, setWarnings]); // Dependencies
+    }, [displayData.planDetails?.name, setWarnings]);
 
     // --- Render Logic ---
 
-     // 1. Handle Client-Side Only Rendering Check
-     if (!isClient) {
-         return <div className="container mx-auto p-4 font-sans text-center">Initializing Planner...</div>;
-     }
-
-     // 2. Handle Loading State for Course Data
-     if (isLoading) {
-         return <div className="container mx-auto p-4 text-center">Loading course data...</div>;
-     }
-
-     // 3. Handle Course Data Loading Error
+     if (!isClient) return <div className="container mx-auto p-4 font-sans text-center">Initializing Planner...</div>;
+     if (isLoading) return <div className="container mx-auto p-4 text-center">Loading course data...</div>;
      if (loadingError) {
          return <div className="container mx-auto p-4 text-center text-red-600 border border-red-300 bg-red-50 rounded p-4">
-             <h2 class="text-lg font-semibold mb-2">Error Loading Data</h2>
+             <h2 className="text-lg font-semibold mb-2">Error Loading Data</h2> {/* Use className */}
              <p>{loadingError}</p>
-             <p class="mt-2 text-sm text-gray-700">Please ensure all JSON course files are in the same directory as this HTML file and are correctly formatted. You may need to run a local web server.</p>
+             <p className="mt-2 text-sm text-gray-700">Please ensure all JSON course files are in the same directory as this HTML file and are correctly formatted. You may need to run a local web server.</p> {/* Use className */}
           </div>;
      }
 
-     // 4. Render the Main Application UI (if client-side, not loading, no errors)
     return (
         <div className="container mx-auto p-4 font-sans">
-            {/* Wrapper for PNG export content */}
             <div id="plan-export-content" className="bg-gray-50 p-4 rounded-lg">
                 <header className="mb-6 text-center">
                     <h1 className="text-3xl font-bold text-blue-700">RRISD 4-Year Graduation Planner</h1>
@@ -878,13 +762,12 @@ function App() {
                     <p className="text-xs text-red-600 mt-1">Disclaimer: Uses representative data. Always consult official RRISD resources and your counselor.</p>
                 </header>
 
-                {/* Middle School Credits Section - Pass necessary props */}
                 <MiddleSchoolCredits
                     middleSchoolCredits={middleSchoolCredits}
                     addMiddleSchoolCredit={addMiddleSchoolCredit}
                     removeMiddleSchoolCredit={removeMiddleSchoolCredit}
-                    allCourses={allCoursesData} // Pass loaded data
-                    findCourseById={findCourseById} // Pass helper
+                    allCourses={allCoursesData}
+                    findCourseById={findCourseById}
                 />
 
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg shadow flex flex-wrap justify-between items-center gap-4">
@@ -901,36 +784,30 @@ function App() {
                             ))}
                         </select>
                     </div>
-                     {/* PNG Export Button */}
                      <button
                          onClick={handleExportPNG}
-                         disabled={isLoading || !!loadingError} // Disable if loading or error
+                         disabled={isLoading || !!loadingError}
                          className={`px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition duration-150 ease-in-out ${isLoading || !!loadingError ? 'opacity-50 cursor-not-allowed' : ''}`}
                      >
                          Export Plan to PNG
                      </button>
                 </div>
 
-                {/* Year Plans - Pass necessary props */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     {[9, 10, 11, 12].map(year => (
                         <YearPlan
-                            key={year}
-                            year={year}
+                            key={year} year={year}
                             selectedCoursesInYear={selectedCourses[year] || []}
-                            allCourses={allCoursesData} // Pass loaded data
+                            allCourses={allCoursesData}
                             middleSchoolCredits={middleSchoolCredits}
                             selectedCoursesByYear={selectedCourses}
-                            addCourse={addCourse}
-                            removeCourse={removeCourse}
-                            setWarnings={setWarnings}
-                            findCourseById={findCourseById} // Pass helper
-                            checkPrerequisites={checkPrerequisites} // Pass helper
+                            addCourse={addCourse} removeCourse={removeCourse}
+                            setWarnings={setWarnings} findCourseById={findCourseById}
+                            checkPrerequisites={checkPrerequisites}
                         />
                     ))}
                 </div>
 
-                {/* Progress Trackers - Pass necessary props */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-1">
                         <GraduationProgress credits={displayData.credits} plan={displayData.planDetails} />
@@ -940,16 +817,13 @@ function App() {
                     </div>
                     <div className="md:col-span-1">
                         <DLAGuidance
-                            selectedCoursesByYear={selectedCourses}
-                            middleSchoolCredits={middleSchoolCredits}
-                            planType={selectedPlanType}
-                            findCourseById={findCourseById} // Pass helper
+                            selectedCoursesByYear={selectedCourses} middleSchoolCredits={middleSchoolCredits}
+                            planType={selectedPlanType} findCourseById={findCourseById}
                         />
                     </div>
                 </div>
             </div> {/* End of plan-export-content */}
 
-             {/* Warnings Message Box */}
              <MessageBox messages={warnings} clearMessages={clearWarnings} />
 
              <footer className="text-center mt-8 text-xs text-gray-500">
