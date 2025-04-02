@@ -1,0 +1,8 @@
+[
+    {"id": "ART1", "name": "Art I", "subject": "Fine Arts", "credits": 1.0, "gradeLevels": [9, 10, 11, 12], "prerequisites": [], "endorsements": ["Arts & Humanities", "Multidisciplinary"], "description": "Exploration of art elements, principles, and media.", "availableInMiddleSchool": true},
+    {"id": "BAND1", "name": "Band I", "subject": "Fine Arts", "credits": 1.0, "gradeLevels": [9], "prerequisites": [], "endorsements": ["Arts & Humanities", "Multidisciplinary"], "description": "Instrumental music performance.", "availableInMiddleSchool": false},
+    {"id": "CHOIR1", "name": "Choir I", "subject": "Fine Arts", "credits": 1.0, "gradeLevels": [9], "prerequisites": [], "endorsements": ["Arts & Humanities", "Multidisciplinary"], "description": "Vocal music performance.", "availableInMiddleSchool": false},
+    {"id": "THEATER1", "name": "Theatre Arts I", "subject": "Fine Arts", "credits": 1.0, "gradeLevels": [9, 10, 11, 12], "prerequisites": [], "endorsements": ["Arts & Humanities", "Multidisciplinary"], "description": "Basic acting techniques, technical theatre, interpretation.", "availableInMiddleSchool": true},
+    {"id": "ART2DRAW", "name": "Art II: Drawing I", "subject": "Fine Arts", "credits": 1.0, "gradeLevels": [10, 11, 12], "prerequisites": ["ART1"], "endorsements": ["Arts & Humanities"], "description": "Develop drawing skills and techniques.", "availableInMiddleSchool": false},
+    {"id": "MUSICTHAP", "name": "Music Theory AP", "subject": "Fine Arts", "credits": 1.0, "gradeLevels": [10, 11, 12], "prerequisites": [], "endorsements": ["Arts & Humanities", "Multidisciplinary"], "weighted": true, "isAP": true, "description": "AP Level: Study of music theory concepts.", "availableInMiddleSchool": false}
+]
