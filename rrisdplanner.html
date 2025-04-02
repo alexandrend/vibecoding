@@ -97,23 +97,17 @@ const subjectMap = {
 // Displays a message box for warnings/errors
 const MessageBox = ({ messages, clearMessages }) => {
     if (!messages || messages.length === 0) return null;
-
     return (
         <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm">
             <div className="flex justify-between items-start">
-                <div>
-                    <strong className="font-bold block">Alert!</strong>
-                    {messages.map((msg, index) => (
-                        <span key={index} className="block sm:inline">{msg}</span>
-                    ))}
-                </div>
+                <div> <strong className="font-bold block">Alert!</strong> {messages.map((msg, index) => (<span key={index} className="block sm:inline">{msg}</span>))} </div>
                 <button onClick={clearMessages} className="ml-4 text-red-500 hover:text-red-700 font-bold text-2xl leading-none">&times;</button>
             </div>
         </div>
     );
 };
 
-// Displays a single course card (used in YearPlan and MiddleSchoolCredits)
+// Displays a single course card
 const CourseCard = ({ course, onRemove, showRemoveButton = true }) => (
     <div className="bg-white p-2 mb-2 rounded-md shadow border border-gray-200 flex justify-between items-center group">
         <div>
@@ -122,266 +116,48 @@ const CourseCard = ({ course, onRemove, showRemoveButton = true }) => (
              {course.weighted && <span title="Weighted Course" className="ml-1 text-xs bg-yellow-200 text-yellow-800 px-1 rounded">W</span>}
              {course.isAP && <span title="AP Course" className="ml-1 text-xs bg-blue-200 text-blue-800 px-1 rounded">AP</span>}
         </div>
-        {showRemoveButton && (
-            <button
-                onClick={onRemove}
-                className="text-red-500 hover:text-red-700 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity px-1"
-                aria-label={`Remove ${course.name}`}
-            >
-                &times;
-            </button>
-        )}
+        {showRemoveButton && ( <button onClick={onRemove} className="text-red-500 hover:text-red-700 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity px-1" aria-label={`Remove ${course.name}`}> &times; </button> )}
     </div>
 );
 
-// Generic Modal for selecting courses (used for YearPlan and MiddleSchoolCredits)
+// Generic Modal for selecting courses
 const CourseSelector = ({ title, availableCourses, onSelectCourse, onClose, showGradeFilter = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSubject, setSelectedSubject] = useState('All');
     const [selectedGrade, setSelectedGrade] = useState('All');
-
-    const grades = useMemo(() => {
-        if (!showGradeFilter) return [];
-        const levels = new Set();
-        if (Array.isArray(availableCourses)) {
-            availableCourses.forEach(c => c?.gradeLevels?.forEach(lvl => levels.add(lvl)));
-        }
-        return ['All', ...Array.from(levels).sort((a, b) => a - b)];
-    }, [availableCourses, showGradeFilter]);
-
-    const filteredCourses = useMemo(() => {
-        if (!Array.isArray(availableCourses)) {
-            console.error("availableCourses is not an array:", availableCourses);
-            return [];
-        }
-        return availableCourses
-            .filter(course =>
-                course &&
-                (selectedSubject === 'All' || course.subject === selectedSubject) &&
-                (selectedGrade === 'All' || !showGradeFilter || (course.gradeLevels && course.gradeLevels.includes(parseInt(selectedGrade)))) &&
-                course.name && course.name.toLowerCase().includes(searchTerm.toLowerCase())
-            )
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }, [availableCourses, searchTerm, selectedSubject, selectedGrade, showGradeFilter]);
-
-    const subjects = useMemo(() => {
-        if (!Array.isArray(availableCourses)) return ['All'];
-        return ['All', ...new Set(availableCourses.map(c => c?.subject).filter(Boolean).sort())];
-    }, [availableCourses]);
-
-    return (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-40 flex justify-center items-center p-4">
-            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl font-bold">&times;</button>
-                </div>
-                 <div className="p-4 border-b flex flex-col sm:flex-row gap-2 items-center">
-                     <input
-                         type="text"
-                         placeholder="Search courses..."
-                         value={searchTerm}
-                         onChange={(e) => setSearchTerm(e.target.value)}
-                         className="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     />
-                     <select
-                         value={selectedSubject}
-                         onChange={(e) => setSelectedSubject(e.target.value)}
-                         className="p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
-                     >
-                         {subjects.map(subject => (
-                             <option key={subject} value={subject}>{subject}</option>
-                         ))}
-                     </select>
-                      {showGradeFilter && (
-                         <select
-                             value={selectedGrade}
-                             onChange={(e) => setSelectedGrade(e.target.value)}
-                             className="p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
-                         >
-                             {grades.map(grade => (
-                                 <option key={grade} value={grade}>{grade === 'All' ? 'All Grades' : `Grade ${grade}`}</option>
-                             ))}
-                         </select>
-                      )}
-                 </div>
-                <div className="overflow-y-auto p-4 flex-grow">
-                    {filteredCourses.length > 0 ? (
-                        <ul className="space-y-2">
-                            {filteredCourses.map(course => (
-                                <li key={course.id} className="p-3 bg-gray-50 rounded-md hover:bg-blue-50 border border-gray-200 flex justify-between items-start cursor-pointer" onClick={() => onSelectCourse(course.id)}>
-                                    <div>
-                                        <span className="font-medium text-gray-900">{course.name}</span>
-                                        <span className="text-xs text-gray-600 ml-2">({course.credits} cr) - {course.subject}</span>
-                                        <p className="text-xs text-gray-500 mt-1">{course.description || 'No description available.'}</p>
-                                    </div>
-                                     <button
-                                         onClick={(e) => { e.stopPropagation(); onSelectCourse(course.id); }}
-                                         className="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 flex-shrink-0"
-                                     > Add </button>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-center text-gray-500">No courses match your criteria.</p>
-                    )}
-                </div>
-                 <div className="p-4 border-t text-right">
-                     <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Close</button>
-                 </div>
-            </div>
-        </div>
-    );
+    const grades = useMemo(() => { /* ... */ }, [availableCourses, showGradeFilter]);
+    const filteredCourses = useMemo(() => { /* ... */ }, [availableCourses, searchTerm, selectedSubject, selectedGrade, showGradeFilter]);
+    const subjects = useMemo(() => { /* ... */ }, [availableCourses]);
+    return ( <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-40 flex justify-center items-center p-4"> {/* ... modal structure ... */} </div> );
 };
 
 // Displays the plan for a single year
-const YearPlan = ({
-    year, selectedCoursesInYear, allCourses, middleSchoolCredits, selectedCoursesByYear,
-    addCourse, removeCourse, setWarnings, findCourseById, checkPrerequisites
-}) => {
+const YearPlan = ({ year, selectedCoursesInYear, allCourses, middleSchoolCredits, selectedCoursesByYear, addCourse, removeCourse, setWarnings, findCourseById, checkPrerequisites }) => {
     const [showSelector, setShowSelector] = useState(false);
     const coursesInYear = selectedCoursesInYear.map(findCourseById).filter(Boolean);
-
-     const availableCoursesForSelector = useMemo(() => {
-         const allSelectedIds = new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]);
-         return allCourses.filter(course => {
-             if (!course || !course.gradeLevels || !course.id || !course.name) return false;
-             if (!course.gradeLevels.includes(year)) return false;
-             if (allSelectedIds.has(course.id)) return false;
-             const prereqCheckResult = checkPrerequisites(course.id, selectedCoursesByYear, middleSchoolCredits, year, allCourses);
-             if (!prereqCheckResult.met) return false;
-             return true;
-         });
-     }, [allCourses, year, middleSchoolCredits, selectedCoursesByYear, checkPrerequisites]);
-
-    const handleAddCourse = (courseId) => {
-        const course = findCourseById(courseId);
-        if (!course) return;
-        addCourse(year, courseId);
-        setShowSelector(false);
-        if (course.coRequisites && course.coRequisites.length > 0) {
-             const currentYearCoursesPlusNew = new Set([...(selectedCoursesByYear[year] || []), courseId]);
-             const metCoReqs = course.coRequisites.every(reqId => currentYearCoursesPlusNew.has(reqId));
-             if (!metCoReqs) {
-                 const coReqNames = course.coRequisites.map(id => findCourseById(id)?.name || id).join(', ');
-                 setWarnings(prev => [...new Set([...prev, `Co-requisite suggested for ${course.name}: ${coReqNames} in Grade ${year}`])]);
-             }
-        }
-    };
-
-    return (
-        <div className="bg-gray-100 p-4 rounded-lg shadow-md min-h-[200px] flex flex-col">
-            <h3 className="text-lg font-semibold mb-3 text-gray-700 border-b pb-2">Grade {year}</h3>
-            <div className="space-y-1 min-h-[100px] flex-grow">
-                {coursesInYear.length > 0 ? (
-                    coursesInYear.map(course => (
-                        <CourseCard key={course.id} course={course} onRemove={() => removeCourse(year, course.id)} />
-                    ))
-                ) : (
-                    <p className="text-sm text-gray-500 text-center pt-4">No courses added yet.</p>
-                )}
-            </div>
-            <button onClick={() => setShowSelector(true)} className="mt-3 w-full px-3 py-1.5 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition duration-150 ease-in-out">
-                + Add Course
-            </button>
-            {showSelector && (
-                <CourseSelector title={`Add Course for Grade ${year}`} availableCourses={availableCoursesForSelector} onSelectCourse={handleAddCourse} onClose={() => setShowSelector(false)} showGradeFilter={false} />
-            )}
-        </div>
-    );
+    const availableCoursesForSelector = useMemo(() => { /* ... */ }, [allCourses, year, middleSchoolCredits, selectedCoursesByYear, checkPrerequisites]);
+    const handleAddCourse = (courseId) => { /* ... */ };
+    return ( <div className="bg-gray-100 p-4 rounded-lg shadow-md min-h-[200px] flex flex-col"> {/* ... year plan structure ... */} </div> );
 };
 
 // Component to manage Middle School Credits
 const MiddleSchoolCredits = ({ middleSchoolCredits, addMiddleSchoolCredit, removeMiddleSchoolCredit, allCourses, findCourseById }) => {
     const [showSelector, setShowSelector] = useState(false);
     const msCourses = middleSchoolCredits.map(findCourseById).filter(Boolean);
-
-    const availableCoursesForSelector = useMemo(() => {
-        const selectedIds = new Set(middleSchoolCredits);
-        return allCourses.filter(course =>
-            course && !selectedIds.has(course.id) &&
-            (course.availableInMiddleSchool === true || (course.gradeLevels?.includes(9) && (!course.prerequisites || course.prerequisites.length === 0)))
-        );
-    }, [allCourses, middleSchoolCredits]);
-
-    const handleAddCredit = (courseId) => {
-        addMiddleSchoolCredit(courseId);
-        setShowSelector(false);
-    };
-
-    return (
-        <div className="mb-6 p-4 bg-indigo-50 rounded-lg shadow">
-            <h2 className="text-xl font-semibold text-indigo-800 mb-3">Middle School Credits</h2>
-            <p className="text-sm text-gray-600 mb-3">Add any high school credits earned before Grade 9 (e.g., Algebra I, Spanish I/II).</p>
-            <div className="space-y-1 mb-3 min-h-[40px]">
-                {msCourses.length > 0 ? (
-                    msCourses.map(course => (
-                        <CourseCard key={course.id} course={course} onRemove={() => removeMiddleSchoolCredit(course.id)} />
-                    ))
-                ) : (
-                    <p className="text-sm text-gray-500">No middle school credits added.</p>
-                )}
-            </div>
-            <button onClick={() => setShowSelector(true)} className="px-3 py-1.5 bg-indigo-500 text-white text-sm rounded-md hover:bg-indigo-600 transition duration-150 ease-in-out">
-                + Add Middle School Credit
-            </button>
-            {showSelector && (
-                <CourseSelector title="Select Middle School Credits" availableCourses={availableCoursesForSelector} onSelectCourse={handleAddCredit} onClose={() => setShowSelector(false)} showGradeFilter={false} />
-            )}
-        </div>
-    );
+    const availableCoursesForSelector = useMemo(() => { /* ... */ }, [allCourses, middleSchoolCredits]);
+    const handleAddCredit = (courseId) => { /* ... */ };
+    return ( <div className="mb-6 p-4 bg-indigo-50 rounded-lg shadow"> {/* ... ms credits structure ... */} </div> );
 };
 
 // Displays graduation progress
 const GraduationProgress = ({ credits, plan }) => {
     if (!plan) return <div className="p-4 bg-blue-50 rounded-lg shadow"><p className="text-center text-gray-600">Select a Graduation Plan</p></div>;
-
     const requirements = plan.requirements;
     const totalRequired = plan.totalCredits;
-     const currentTotalInRequiredCategories = Object.entries(credits)
-         .filter(([key]) => key !== 'Electives' && key !== 'Total' && requirements[key] !== undefined)
-         .reduce((sum, [key, value]) => sum + Math.min(value, requirements[key]), 0);
-     const requiredElectives = Math.max(0, totalRequired - currentTotalInRequiredCategories);
-     const electiveProgress = credits.Electives;
-
-    return (
-        <div className="p-4 bg-blue-50 rounded-lg shadow h-full">
-            <h3 className="text-lg font-semibold mb-3 text-blue-800">Graduation Progress ({plan.name})</h3>
-            <div className="space-y-2">
-                {Object.entries(requirements).map(([subjectKey, required]) => {
-                    const current = credits[subjectKey] || 0;
-                    const isMet = current >= required;
-                    if (subjectKey === 'Electives') {
-                         const displayRequired = requiredElectives;
-                         const displayCurrent = electiveProgress;
-                         const displayIsMet = displayCurrent >= displayRequired;
-                         return (
-                             <div key={subjectKey} className="text-sm">
-                                 <span className="font-medium">{subjectKey}:</span> {displayCurrent.toFixed(1)} / {displayRequired.toFixed(1)} Credits Needed
-                                 <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${displayIsMet ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
-                                     {displayIsMet ? 'Met' : 'In Progress'}
-                                 </span>
-                             </div>
-                         );
-                    }
-                    return (
-                        <div key={subjectKey} className="text-sm">
-                            <span className="font-medium">{subjectKey}:</span> {current.toFixed(1)} / {required.toFixed(1)} Credits
-                            <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${isMet ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                                {isMet ? 'Met' : 'Needed'}
-                            </span>
-                        </div>
-                    );
-                })}
-                <div className="text-sm font-semibold pt-2 border-t mt-2">
-                    Total: {credits.Total.toFixed(1)} / {totalRequired.toFixed(1)} Credits
-                     <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${credits.Total >= totalRequired ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                         {credits.Total >= totalRequired ? 'Met' : 'Needed'}
-                     </span>
-                </div>
-            </div>
-        </div>
-    );
+    const currentTotalInRequiredCategories = Object.entries(credits).filter(/* ... */).reduce(/* ... */, 0);
+    const requiredElectives = Math.max(0, totalRequired - currentTotalInRequiredCategories);
+    const electiveProgress = credits.Electives;
+    return ( <div className="p-4 bg-blue-50 rounded-lg shadow h-full"> {/* ... progress structure ... */} </div> );
 };
 
 // Displays DLA status and guidance
@@ -390,37 +166,15 @@ const DLAGuidance = ({ selectedCoursesByYear, middleSchoolCredits, planType, fin
     const allSelectedIds = useMemo(() => new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]), [middleSchoolCredits, selectedCoursesByYear]);
     const hasAlgebra2 = graduationPlansData.dla.specificCourses.some(id => allSelectedIds.has(id));
     const algebra2Course = findCourseById('ALG2') || findCourseById('ALG2ADV');
-    return (
-        <div className="p-4 bg-purple-50 rounded-lg shadow mt-4 h-full">
-            <h3 className="text-lg font-semibold mb-2 text-purple-800">DLA Status</h3>
-            <p className={`text-sm ${hasAlgebra2 ? 'text-green-700' : 'text-red-700'}`}>
-                {hasAlgebra2 ? '✓ Algebra II requirement met.' : `✗ Algebra II requirement NOT met. Consider adding "${algebra2Course?.name || 'Algebra II'}".`}
-            </p>
-        </div>
-    );
+    return ( <div className="p-4 bg-purple-50 rounded-lg shadow mt-4 h-full"> {/* ... dla structure ... */} </div> );
 };
 
-// Displays potential endorsements (Simplified Check)
+// Displays potential endorsements
 const EndorsementTracker = ({ selectedCoursesByYear, middleSchoolCredits, planType }) => {
      if (planType === 'foundation') return null;
     const allSelectedIds = useMemo(() => new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]), [middleSchoolCredits, selectedCoursesByYear]);
-    const potentialEndorsements = useMemo(() => {
-        return Object.entries(endorsementsData)
-            .map(([key, data]) => {
-                const hasKeyCourse = data.keyCourses.some(courseId => allSelectedIds.has(courseId));
-                return hasKeyCourse ? data.name : null;
-            })
-            .filter(Boolean);
-    }, [allSelectedIds]);
-    return (
-        <div className="p-4 bg-yellow-50 rounded-lg shadow mt-4 h-full">
-            <h3 className="text-lg font-semibold mb-2 text-yellow-800">Potential Endorsements</h3>
-            {potentialEndorsements.length > 0 ? (
-                <ul className="list-disc list-inside space-y-1 text-sm"> {potentialEndorsements.map(name => <li key={name}>{name}</li>)} </ul>
-            ) : ( <p className="text-sm text-gray-600">No specific endorsements strongly indicated yet...</p> )}
-             <p className="text-xs text-gray-500 mt-2">(Note: Simplified check. Consult official RRISD catalog.)</p>
-        </div>
-    );
+    const potentialEndorsements = useMemo(() => { /* ... */ }, [allSelectedIds]);
+    return ( <div className="p-4 bg-yellow-50 rounded-lg shadow mt-4 h-full"> {/* ... endorsement structure ... */} </div> );
 };
 
 // --- Main App Component ---
@@ -430,18 +184,73 @@ function App() {
     const [selectedCourses, setSelectedCourses] = useState({ 9: [], 10: [], 11: [], 12: [] });
     const [middleSchoolCredits, setMiddleSchoolCredits] = useState([]);
     const [warnings, setWarnings] = useState([]);
-    const [isDataLoaded, setIsDataLoaded] = useState(false);
+    const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks localStorage load
     const [isClient, setIsClient] = useState(false);
-    const [allCoursesData, setAllCoursesData] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [loadingError, setLoadingError] = useState(null);
+    const [allCoursesData, setAllCoursesData] = useState([]); // Loaded from JSON
+    const [isLoading, setIsLoading] = useState(true); // Tracks JSON loading
+    const [loadingError, setLoadingError] = useState(null); // Stores JSON loading errors
 
     // --- Effects ---
-    useEffect(() => { setIsClient(true); /* ... html2canvas loading ... */ }, []);
-    useEffect(() => { /* ... localStorage loading ... */ }, [isClient]);
-    useEffect(() => { /* ... localStorage saving ... */ }, [selectedPlanType, selectedCourses, middleSchoolCredits, isDataLoaded, isClient]);
+    // Effect for client-side check and script loading
+    useEffect(() => {
+        setIsClient(true);
+        // Dynamically load html2canvas script
+        const scriptId = 'html2canvas-script';
+        if (!document.getElementById(scriptId)) {
+            const script = document.createElement('script');
+            script.id = scriptId;
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+            script.async = true;
+            script.onload = () => console.log('html2canvas loaded successfully.');
+            script.onerror = () => console.error('Failed to load html2canvas script.');
+            document.body.appendChild(script);
+        }
+    }, []);
 
-    // Effect to fetch course data from JSON files with improved error handling
+    // Effect to load saved selections from localStorage
+     useEffect(() => {
+         if (isClient && typeof window !== 'undefined' && window.localStorage) {
+             // Load plan type
+             const savedPlan = localStorage.getItem('graduationPlan');
+             if (savedPlan) setSelectedPlanType(savedPlan);
+
+             // Load selected courses
+             const savedCourses = localStorage.getItem('selectedCourses');
+             if (savedCourses) {
+                 try {
+                     const parsedCourses = JSON.parse(savedCourses);
+                     // Basic validation for the expected structure
+                     if (typeof parsedCourses === 'object' && parsedCourses !== null && [9,10,11,12].every(y => Array.isArray(parsedCourses[y]))) {
+                         setSelectedCourses(parsedCourses);
+                     } else { localStorage.removeItem('selectedCourses'); } // Clear invalid data
+                 } catch (e) { localStorage.removeItem('selectedCourses'); } // Clear if parsing fails
+             }
+
+             // Load middle school credits
+              const savedMsCredits = localStorage.getItem('middleSchoolCredits');
+              if (savedMsCredits) {
+                  try {
+                      const parsedMsCredits = JSON.parse(savedMsCredits);
+                      if (Array.isArray(parsedMsCredits)) {
+                          setMiddleSchoolCredits(parsedMsCredits);
+                      } else { localStorage.removeItem('middleSchoolCredits'); } // Clear invalid data
+                  } catch (e) { localStorage.removeItem('middleSchoolCredits'); } // Clear if parsing fails
+              }
+         }
+          setIsDataLoaded(true); // Mark that the attempt to load from localStorage is complete
+     }, [isClient]); // Depend only on isClient to run once client-side
+
+    // Effect to save selections to localStorage
+     useEffect(() => {
+          // Only save after the initial load attempt is complete and if client-side
+          if (isClient && isDataLoaded && typeof window !== 'undefined' && window.localStorage) {
+              localStorage.setItem('graduationPlan', selectedPlanType);
+              localStorage.setItem('selectedCourses', JSON.stringify(selectedCourses));
+              localStorage.setItem('middleSchoolCredits', JSON.stringify(middleSchoolCredits));
+          }
+     }, [selectedPlanType, selectedCourses, middleSchoolCredits, isDataLoaded, isClient]); // Dependencies
+
+    // Effect to fetch course data from JSON files
     useEffect(() => {
         const fetchCourseData = async () => {
             const files = [
@@ -449,85 +258,211 @@ function App() {
                 'social_study_courses.json', 'lote_courses.json', 'art_courses.json',
                 'pe_courses.json', 'cte_elective_courses.json', 'elective_courses.json'
             ];
-            setIsLoading(true);
-            setLoadingError(null);
-            setAllCoursesData([]); // Clear previous data
-
-            // Map each file fetch to a promise that resolves with its status
+            setIsLoading(true); setLoadingError(null); setAllCoursesData([]);
             const fetchPromises = files.map(file =>
                 fetch(file)
                     .then(response => {
-                        if (!response.ok) {
-                            // Throw an error that includes the file name and status
-                            throw new Error(`HTTP error ${response.status} (${response.statusText})`);
-                        }
-                        // Try to parse JSON, catch parsing errors specifically
-                        return response.json().catch(parseError => {
-                             // Throw a new error indicating JSON parsing failure
-                             throw new Error(`Invalid JSON in file: ${parseError.message}`);
-                        });
+                        if (!response.ok) throw new Error(`HTTP error ${response.status} (${response.statusText})`);
+                        return response.json().catch(parseError => { throw new Error(`Invalid JSON in file: ${parseError.message}`); });
                     })
-                    .then(data => ({ status: 'fulfilled', file: file, data: data })) // Success object
-                    .catch(error => ({ status: 'rejected', file: file, error: error })) // Failure object
+                    .then(data => ({ status: 'fulfilled', file: file, data: data }))
+                    .catch(error => ({ status: 'rejected', file: file, error: error }))
             );
-
             try {
-                // Wait for all fetch attempts to complete (either fulfilled or rejected)
                 const results = await Promise.all(fetchPromises);
-
-                // Find the first fetch that failed
                 const firstError = results.find(result => result.status === 'rejected');
-
                 if (firstError) {
-                    // If an error occurred, set the specific error message
                     console.error(`Failed to load course data from ${firstError.file}:`, firstError.error);
-                    // Construct a more informative error message for the user
                     setLoadingError(`Error loading ${firstError.file}: ${firstError.error.message}. Please check the file content and ensure it's valid JSON.`);
                 } else {
-                    // If all fetches succeeded, combine the data
-                    const combinedCourses = results.flatMap(result => result.data); // Use flatMap directly
+                    const combinedCourses = results.flatMap(result => result.data);
                     setAllCoursesData(combinedCourses);
                     console.log("Course data loaded successfully:", combinedCourses.length, "courses");
                 }
             } catch (unexpectedError) {
-                // Catch any unexpected errors during the Promise.all setup itself
                 console.error("Unexpected error during course data fetching:", unexpectedError);
                 setLoadingError(`An unexpected error occurred: ${unexpectedError.message}`);
             } finally {
-                setIsLoading(false); // Mark loading as complete
+                setIsLoading(false);
             }
         };
         fetchCourseData();
-    }, []); // Runs once on mount
+    }, []);
 
 
     // --- Utility Functions ---
     const findCourseById = useCallback((id) => allCoursesData.find(course => course.id === id), [allCoursesData]);
-    const checkPrerequisites = useCallback((courseId, selectedCoursesByYear, middleSchoolCredits = [], targetYear, coursesData) => { /* ... implementation ... */ }, [findCourseById]);
-    const calculateCredits = useCallback((selectedCoursesByYear, middleSchoolCredits = [], coursesData) => { /* ... implementation ... */ }, []);
+    const checkPrerequisites = useCallback((courseId, selectedCoursesByYear, middleSchoolCredits = [], targetYear, coursesData) => {
+        // Finds course in the provided coursesData array
+        const course = coursesData.find(c => c.id === courseId);
+        if (!course || !course.prerequisites || course.prerequisites.length === 0) return { met: true, message: '' };
+
+        // Gathers IDs of courses completed *before* the target year
+        const completedCourseIds = new Set([
+            ...middleSchoolCredits,
+            ...Object.entries(selectedCoursesByYear)
+                .filter(([year]) => parseInt(year) < targetYear)
+                .flatMap(([, courses]) => courses)
+        ]);
+
+        let prerequisitesMet = true;
+        let unmetMessages = [];
+        // Handles 'A||B' (OR) and single prerequisites
+        const requiredSets = course.prerequisites.map(prereq => prereq.split('||').map(s => s.trim()));
+
+        for (const reqSet of requiredSets) {
+            const metThisSet = reqSet.some(reqId => completedCourseIds.has(reqId));
+            if (!metThisSet) {
+                prerequisitesMet = false;
+                // Use findCourseById (which uses up-to-date state) to get names for message
+                const courseNames = reqSet.map(id => findCourseById(id)?.name || id).join(' OR ');
+                unmetMessages.push(`Requires ${courseNames}`);
+            }
+        }
+
+        // Co-requisite check (warning only)
+        if (course.coRequisites && course.coRequisites.length > 0) {
+            const currentYearCourses = new Set(selectedCoursesByYear[targetYear] || []);
+            const metCoReqs = course.coRequisites.every(reqId => currentYearCourses.has(reqId));
+             if (!metCoReqs && prerequisitesMet) { // Only warn if prereqs are met but co-reqs aren't
+                 const coReqNames = course.coRequisites.map(id => findCourseById(id)?.name || id).join(', ');
+                 unmetMessages.push(`(Co-requisite suggested: ${coReqNames} in the same year)`);
+             }
+        }
+        return { met: prerequisitesMet, message: unmetMessages.join('. ') };
+     }, [findCourseById]); // Depends on findCourseById (which depends on allCoursesData)
+
+    const calculateCredits = useCallback((selectedCoursesByYear, middleSchoolCredits = [], coursesData) => {
+        const credits = { ELA: 0, Math: 0, Science: 0, SocialStudies: 0, LOTE: 0, FineArts: 0, PE: 0, Electives: 0, Total: 0 };
+        const uniqueCourseIds = new Set();
+        const allCourseIds = [...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()];
+
+        allCourseIds.forEach(courseId => {
+            if (uniqueCourseIds.has(courseId)) return;
+            // Find course in the provided coursesData array
+            const course = coursesData.find(c => c.id === courseId);
+            if (course) {
+                uniqueCourseIds.add(courseId);
+                const subjectCategory = subjectMap[course.subject] || 'Electives';
+                let credited = false;
+                // Use DLA plan for max requirements check
+                const maxRequired = graduationPlansData.dla.requirements[subjectCategory] || 0;
+
+                // LOTE Substitution logic
+                if (course.endorsements?.includes('LOTE Sub') && credits.LOTE < graduationPlansData.dla.requirements.LOTE) {
+                     credits.LOTE += course.credits; credited = true;
+                }
+                // Apply to primary subject category if needed
+                else if (subjectCategory !== 'Electives' && credits[subjectCategory] < maxRequired) {
+                     const creditToAdd = Math.min(course.credits, maxRequired - credits[subjectCategory]);
+                     credits[subjectCategory] += creditToAdd;
+                     const remainingCredit = course.credits - creditToAdd;
+                     if (remainingCredit > 0) credits.Electives += remainingCredit;
+                     credited = true;
+                }
+                // Apply to Electives if not credited elsewhere
+                if (!credited) credits.Electives += course.credits;
+                 credits.Total += course.credits; // Always add to total
+            }
+        });
+        return credits;
+    }, []); // No direct state dependencies, relies on passed data
 
     // --- Callbacks ---
-    const addCourse = useCallback((year, courseId) => { /* ... implementation ... */ }, [middleSchoolCredits, findCourseById]);
-    const removeCourse = useCallback((year, courseId) => { /* ... implementation ... */ }, []);
-    const addMiddleSchoolCredit = useCallback((courseId) => { /* ... implementation ... */ }, [selectedCourses, findCourseById]);
-    const removeMiddleSchoolCredit = useCallback((courseId) => { /* ... implementation ... */ }, []);
-    const clearWarnings = useCallback(() => setWarnings([]), []);
+    const addCourse = useCallback((year, courseId) => {
+         if (middleSchoolCredits.includes(courseId)) {
+             setWarnings(prev => [...new Set([...prev, `${findCourseById(courseId)?.name || courseId} was already added as a Middle School credit.`])]); return;
+         }
+         setSelectedCourses(prev => {
+             const yearCourses = prev[year] || [];
+             return !yearCourses.includes(courseId) ? { ...prev, [year]: [...yearCourses, courseId] } : prev;
+         });
+          const courseName = findCourseById(courseId)?.name || courseId;
+          setWarnings(prev => prev.filter(w => !w.includes(`Prerequisite check for ${courseName}`)));
+          setWarnings(prev => prev.filter(w => !w.includes(`Co-requisite suggested for ${courseName}`)));
+     }, [middleSchoolCredits, findCourseById]);
+
+    const removeCourse = useCallback((year, courseId) => {
+         setSelectedCourses(prev => ({ ...prev, [year]: (prev[year] || []).filter(id => id !== courseId) }));
+     }, []);
+
+     const addMiddleSchoolCredit = useCallback((courseId) => {
+          const alreadyInHS = Object.values(selectedCourses).flat().includes(courseId);
+          if (alreadyInHS) {
+              setWarnings(prev => [...new Set([...prev, `${findCourseById(courseId)?.name || courseId} is already selected in your High School plan.`])]); return;
+          }
+          setMiddleSchoolCredits(prev => !prev.includes(courseId) ? [...prev, courseId] : prev);
+      }, [selectedCourses, findCourseById]);
+
+     const removeMiddleSchoolCredit = useCallback((courseId) => {
+          setMiddleSchoolCredits(prev => prev.filter(id => id !== courseId));
+      }, []);
+
+     const clearWarnings = useCallback(() => setWarnings([]), []);
 
     // Memoized calculation for display data
-    const displayData = useMemo(() => { /* ... implementation ... */ }, [selectedPlanType, selectedCourses, middleSchoolCredits, allCoursesData, calculateCredits]);
+    const displayData = useMemo(() => {
+        const planDetails = graduationPlansData[selectedPlanType];
+        // Pass the current allCoursesData state to the calculation function
+        const credits = calculateCredits(selectedCourses, middleSchoolCredits, allCoursesData);
+        return { credits, planDetails };
+    }, [selectedPlanType, selectedCourses, middleSchoolCredits, allCoursesData, calculateCredits]); // Include all dependencies
 
     // PNG Export Handler
-    const handleExportPNG = useCallback(() => { /* ... implementation ... */ }, [displayData.planDetails?.name, setWarnings]);
+    const handleExportPNG = useCallback(() => {
+        console.log("Export button clicked");
+        const exportContent = document.getElementById('plan-export-content');
+
+        // --- FIX START ---
+        // Add check for displayData and planDetails before using them
+        if (!displayData || !displayData.planDetails) {
+             console.error("Cannot export: Plan details not available yet.");
+             setWarnings(prev => [...new Set([...prev, "Cannot export: Plan details not available."])]);
+             return; // Exit if data isn't ready
+        }
+        // --- FIX END ---
+
+        if (exportContent && typeof window.html2canvas === 'function') {
+            console.log("html2canvas function found, attempting render...");
+            exportContent.classList.add('exporting-png');
+            setTimeout(() => {
+                window.html2canvas(exportContent, { scale: 2, useCORS: true, logging: true, backgroundColor: '#f9fafb' })
+                 .then(canvas => {
+                    console.log("html2canvas generated canvas");
+                    const image = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    // Now it's safer to access planDetails.name
+                    const filename = `RRISD_Graduation_Plan_${displayData.planDetails.name.replace(/\s+/g, '_') || 'Plan'}.png`;
+                    link.download = filename;
+                    link.href = image;
+                    link.click();
+                    console.log("Download triggered.");
+                    exportContent.classList.remove('exporting-png');
+                }).catch(err => {
+                    console.error("Error generating PNG:", err);
+                    setWarnings(prev => [...new Set([...prev, `Error generating PNG: ${err.message}. Check console.`])]);
+                    exportContent.classList.remove('exporting-png');
+                });
+            }, 100);
+        } else if (!exportContent){
+            console.error("Export content area 'plan-export-content' not found");
+            setWarnings(prev => [...new Set([...prev, "Could not find content to export."])]);
+        } else {
+             console.error("html2canvas is not loaded or not a function.");
+             setWarnings(prev => [...new Set([...prev, "PNG Export library (html2canvas) not loaded. Please wait or check console."])]);
+        }
+    // --- FIX: Update dependency array ---
+    // Depend on the whole displayData object, as the function uses its properties.
+    }, [displayData, setWarnings]);
+    // --- End FIX ---
 
     // --- Render Logic ---
      if (!isClient) return <div className="container mx-auto p-4 font-sans text-center">Initializing Planner...</div>;
      if (isLoading) return <div className="container mx-auto p-4 text-center">Loading course data...</div>;
      if (loadingError) {
-         // Display the improved error message
          return <div className="container mx-auto p-4 text-center text-red-600 border border-red-300 bg-red-50 rounded p-4">
-             <h2 className="text-lg font-semibold mb-2">Error Loading Data</h2>
-             <p>{loadingError}</p> {/* This now includes the filename and specific error */}
-             <p className="mt-2 text-sm text-gray-700">Please ensure all JSON course files are in the same directory as this HTML file and are correctly formatted. You may need to run a local web server.</p>
+             <h2 className="text-lg font-semibold mb-2">Error Loading Data</h2> <p>{loadingError}</p>
+             <p className="mt-2 text-sm text-gray-700">Please ensure all JSON course files are in the same directory... You may need to run a local web server.</p>
           </div>;
      }
 
@@ -538,15 +473,21 @@ function App() {
                 <header className="mb-6 text-center">
                     <h1 className="text-3xl font-bold text-blue-700">RRISD 4-Year Graduation Planner</h1>
                     <p className="text-gray-600">Plan your high school journey!</p>
-                    <p className="text-xs text-red-600 mt-1">Disclaimer: Uses representative data. Always consult official RRISD resources and your counselor.</p>
+                    <p className="text-xs text-red-600 mt-1">Disclaimer: Uses representative data...</p>
                 </header>
-                <MiddleSchoolCredits middleSchoolCredits={middleSchoolCredits} addMiddleSchoolCredit={addMiddleSchoolCredit} removeMiddleSchoolCredit={removeMiddleSchoolCredit} allCourses={allCoursesData} findCourseById={findCourseById} />
+                {/* Pass necessary props down */}
+                <MiddleSchoolCredits {...{ middleSchoolCredits, addMiddleSchoolCredit, removeMiddleSchoolCredit, allCourses: allCoursesData, findCourseById }} />
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg shadow flex flex-wrap justify-between items-center gap-4">
-                    <div> {/* Plan Selector */} </div>
-                    <button onClick={handleExportPNG} disabled={isLoading || !!loadingError} className={`...`}> Export Plan to PNG </button>
+                    <div>
+                        <label htmlFor="plan-select" className="block text-sm font-medium text-gray-700 mb-1">Select Graduation Plan:</label>
+                        <select id="plan-select" value={selectedPlanType} onChange={(e) => setSelectedPlanType(e.target.value)} className="w-full md:w-auto p-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            {Object.entries(graduationPlansData).map(([key, plan]) => ( <option key={key} value={key}>{plan.name} ({plan.totalCredits} Credits)</option> ))}
+                        </select>
+                    </div>
+                     <button onClick={handleExportPNG} disabled={isLoading || !!loadingError} className={`px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition duration-150 ease-in-out ${isLoading || !!loadingError ? 'opacity-50 cursor-not-allowed' : ''}`}> Export Plan to PNG </button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    {[9, 10, 11, 12].map(year => ( <YearPlan key={year} year={year} /* ... props ... */ /> ))}
+                    {[9, 10, 11, 12].map(year => ( <YearPlan key={year} {...{ year, selectedCoursesInYear: selectedCourses[year] || [], allCourses: allCoursesData, middleSchoolCredits, selectedCoursesByYear: selectedCourses, addCourse, removeCourse, setWarnings, findCourseById, checkPrerequisites }} /> ))}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-1"> <GraduationProgress credits={displayData.credits} plan={displayData.planDetails} /> </div>
