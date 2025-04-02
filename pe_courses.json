@@ -1,0 +1,4 @@
+[
+    {"id": "PEFIT", "name": "Lifetime Fitness & Wellness Pursuits", "subject": "PE", "credits": 1.0, "gradeLevels": [9, 10, 11, 12], "prerequisites": [], "endorsements": [], "description": "Focuses on personal fitness and wellness.", "availableInMiddleSchool": false},
+    {"id": "PEATH", "name": "Athletics (Generic)", "subject": "PE", "credits": 1.0, "gradeLevels": [9, 10, 11, 12], "prerequisites": [], "endorsements": [], "description": "Participation in school athletics program.", "availableInMiddleSchool": false}
+]
