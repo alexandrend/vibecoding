@@ -1,102 +1,36 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-// ** html2canvas is now loaded via <script> tag below **
-// import html2canvas from 'html2canvas'; // Removed import
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RRISD 4-Year Graduation Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* Style for PNG export to ensure background is captured */
+        .exporting-png {
+            background-color: #f9fafb; /* Match the wrapper background */
+        }
+        /* Basic font setup */
+        body {
+            font-family: 'Inter', sans-serif; /* Example font */
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
 
-// --- Data ---
-// NOTE: This is a REPRESENTATIVE SUBSET of courses and SIMPLIFIED endorsement rules.
-// A full implementation requires comprehensive data entry from the RRISD catalog.
+    <script type="text/babel">
+// Ensure React and ReactDOM are available from CDN
+const { useState, useEffect, useCallback, useMemo } = React;
 
-const coursesData = [
-    // --- English Language Arts (ELA) ---
-    { id: 'ENG1', name: 'English I', subject: 'ELA', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['Multidisciplinary'], description: 'Instruction and practice in reading, writing, speaking, listening, thinking, and presenting.', availableInMiddleSchool: false },
-    { id: 'ENG1ADV', name: 'English I (Advanced)', subject: 'ELA', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['Multidisciplinary'], weighted: true, description: 'Advanced instruction and practice in reading, writing, speaking, listening, thinking, and presenting.', availableInMiddleSchool: false },
-    { id: 'ENG2', name: 'English II', subject: 'ELA', credits: 1.0, gradeLevels: [10], prerequisites: ['ENG1', 'ENG1ADV'], endorsements: ['Multidisciplinary'], description: 'Focus on world literature, analysis, and writing.', availableInMiddleSchool: false },
-    { id: 'ENG2ADV', name: 'English II (Advanced)', subject: 'ELA', credits: 1.0, gradeLevels: [10], prerequisites: ['ENG1', 'ENG1ADV'], endorsements: ['Multidisciplinary'], weighted: true, description: 'Advanced focus on world literature, analysis, and writing.', availableInMiddleSchool: false },
-    { id: 'ENG3', name: 'English III', subject: 'ELA', credits: 1.0, gradeLevels: [11], prerequisites: ['ENG2', 'ENG2ADV'], endorsements: ['Multidisciplinary'], description: 'Focus on American literature, literary and rhetorical analysis.', availableInMiddleSchool: false },
-    { id: 'ENG3AP', name: 'English III AP Lang & Comp', subject: 'ELA', credits: 1.0, gradeLevels: [11], prerequisites: ['ENG2', 'ENG2ADV'], endorsements: ['Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Critical study of rhetoric, style analysis, research, timed essays.', availableInMiddleSchool: false },
-    { id: 'ENG4', name: 'English IV', subject: 'ELA', credits: 1.0, gradeLevels: [12], prerequisites: ['ENG3||ENG3AP'], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Focus on British literature, analysis, post-secondary writing skills.', availableInMiddleSchool: false },
-    { id: 'ENG4AP', name: 'English IV AP Lit & Comp', subject: 'ELA', credits: 1.0, gradeLevels: [12], prerequisites: ['ENG3||ENG3AP'], endorsements: ['Arts & Humanities', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Analysis of literature through themes, stylistic and rhetorical devices.', availableInMiddleSchool: false },
-    { id: 'CW', name: 'Creative Writing', subject: 'ELA', credits: 0.5, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities'], description: 'Writing essays, short stories, poetry, and drama.', availableInMiddleSchool: false },
+// --- Data (Graduation Plans, Endorsements, Subject Map - Course Data is now loaded) ---
 
-    // --- Mathematics ---
-    { id: 'ALG1', name: 'Algebra I', subject: 'Math', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['STEM', 'Multidisciplinary'], description: 'Foundation for algebraic functions and equations.', availableInMiddleSchool: true },
-    { id: 'GEO', name: 'Geometry', subject: 'Math', credits: 1.0, gradeLevels: [9, 10], prerequisites: ['ALG1'], endorsements: ['STEM', 'Multidisciplinary'], description: 'Study of geometric structures, logical reasoning, transformations, proof.', availableInMiddleSchool: true },
-    { id: 'GEOADV', name: 'Geometry (Advanced)', subject: 'Math', credits: 1.0, gradeLevels: [9, 10], prerequisites: ['ALG1'], endorsements: ['STEM', 'Multidisciplinary'], weighted: true, description: 'Advanced study of geometric structures, logical reasoning, transformations, proof.', availableInMiddleSchool: true },
-    { id: 'ALG2', name: 'Algebra II', subject: 'Math', credits: 1.0, gradeLevels: [9, 10, 11], prerequisites: ['ALG1'], dlaRequired: true, endorsements: ['STEM', 'Multidisciplinary'], description: 'Broadens knowledge of functions (quadratic, exponential, logarithmic, etc.) and systems.', availableInMiddleSchool: false },
-    { id: 'ALG2ADV', name: 'Algebra II (Advanced)', subject: 'Math', credits: 1.0, gradeLevels: [9, 10, 11], prerequisites: ['ALG1', 'GEO', 'GEOADV'], dlaRequired: true, endorsements: ['STEM', 'Multidisciplinary'], weighted: true, description: 'Advanced study of functions (quadratic, exponential, logarithmic, etc.) and systems.', availableInMiddleSchool: false },
-    { id: 'PRECAL', name: 'Precalculus', subject: 'Math', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['GEO', 'GEOADV', 'ALG2', 'ALG2ADV'], endorsements: ['STEM', 'Multidisciplinary'], description: 'Functions, equations, limits as tools for analyzing relationships.', availableInMiddleSchool: false },
-    { id: 'PRECALADV', name: 'Precalculus (Advanced)', subject: 'Math', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['GEOADV', 'ALG2ADV'], endorsements: ['STEM', 'Multidisciplinary'], weighted: true, description: 'Advanced study of functions, equations, limits.', availableInMiddleSchool: false },
-    { id: 'STATS', name: 'Statistics', subject: 'Math', credits: 1.0, gradeLevels: [11, 12], prerequisites: ['ALG1'], endorsements: ['STEM', 'Multidisciplinary'], description: 'Study of variability, sampling, probability, inference, data analysis.', availableInMiddleSchool: false },
-    { id: 'STATSAP', name: 'Statistics AP', subject: 'Math', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['ALG2', 'ALG2ADV'], endorsements: ['STEM', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Descriptive/inferential statistics, probability, study design.', availableInMiddleSchool: false },
-    { id: 'CALCAB', name: 'Calculus AB AP', subject: 'Math', credits: 1.0, gradeLevels: [11, 12], prerequisites: ['PRECAL', 'PRECALADV'], endorsements: ['STEM', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Differential calculus, intro to integral calculus.', availableInMiddleSchool: false },
-    { id: 'CALCBC', name: 'Calculus BC AP', subject: 'Math', credits: 1.0, gradeLevels: [11, 12], prerequisites: ['PRECALADV'], endorsements: ['STEM', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Covers AB topics plus extensive integral calculus.', availableInMiddleSchool: false },
-
-    // --- Science ---
-    { id: 'BIO', name: 'Biology', subject: 'Science', credits: 1.0, gradeLevels: [9, 10], prerequisites: [], endorsements: ['STEM', 'PublicService', 'Multidisciplinary'], description: 'Study of living organisms, genetics, evolution, ecosystems.', availableInMiddleSchool: false },
-    { id: 'BIOADV', name: 'Biology (Advanced)', subject: 'Science', credits: 1.0, gradeLevels: [9, 10], prerequisites: [], endorsements: ['STEM', 'PublicService', 'Multidisciplinary'], weighted: true, description: 'Advanced study of living organisms, genetics, evolution, ecosystems.', availableInMiddleSchool: false },
-    { id: 'CHEM', name: 'Chemistry', subject: 'Science', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['BIO', 'BIOADV', 'ALG1'], endorsements: ['STEM', 'PublicService', 'Multidisciplinary'], description: 'Study of matter, Periodic Table, atomic theory, bonding, reactions.', availableInMiddleSchool: false },
-    { id: 'CHEMADV', name: 'Chemistry (Advanced)', subject: 'Science', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['BIOADV', 'ALG1'], endorsements: ['STEM', 'PublicService', 'Multidisciplinary'], weighted: true, description: 'Advanced study of matter, Periodic Table, atomic theory, bonding, reactions.', availableInMiddleSchool: false },
-    { id: 'PHYS', name: 'Physics', subject: 'Science', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['BIO', 'BIOADV', 'ALG1'], endorsements: ['STEM', 'Multidisciplinary'], description: 'Study of motion, energy, forces, waves, electricity, magnetism.', availableInMiddleSchool: false },
-    { id: 'PHYS1AP', name: 'Physics 1 AP', subject: 'Science', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['ALG1', 'GEO', 'GEOADV'], coRequisites: ['ALG2', 'ALG2ADV'], endorsements: ['STEM', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Algebra-based. Newtonian mechanics, work, energy, power, waves, sound, circuits.', availableInMiddleSchool: false },
-    { id: 'IPC', name: 'Integrated Physics & Chemistry (IPC)', subject: 'Science', credits: 1.0, gradeLevels: [9, 10], prerequisites: [], endorsements: ['STEM', 'Multidisciplinary'], description: 'Investigates force, motion, energy, and matter using physics and chemistry.', availableInMiddleSchool: false },
-    { id: 'ENVSCIAP', name: 'Environmental Science AP', subject: 'Science', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['BIO', 'BIOADV', 'ALG1'], endorsements: ['STEM', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Interdependence of Earth’s systems, human interactions, environmental effects.', availableInMiddleSchool: false },
-    { id: 'ANATPHYS', name: 'Anatomy and Physiology', subject: 'Science', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['BIO', 'BIOADV', 'CHEM', 'CHEMADV', 'IPC', 'PHYS', 'PHYS1AP'], endorsements: ['STEM', 'PublicService'], description: 'Study of human body systems structures, functions, and interactions.', availableInMiddleSchool: false },
-
-    // --- Social Studies ---
-    { id: 'WGEO', name: 'World Geography', subject: 'Social Studies', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Examines people, places, and environments.', availableInMiddleSchool: false },
-    { id: 'WGEADV', name: 'World Geography (Advanced)', subject: 'Social Studies', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], weighted: true, description: 'Advanced examination of people, places, and environments.', availableInMiddleSchool: false },
-    { id: 'HUMGEOAP', name: 'Human Geography AP', subject: 'Social Studies', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Study of patterns and processes shaping human use of Earth.', availableInMiddleSchool: false }, // Can sub for WGEO
-    { id: 'WHIST', name: 'World History', subject: 'Social Studies', credits: 1.0, gradeLevels: [10], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Overview of the history of humankind.', availableInMiddleSchool: false },
-    { id: 'WHISTAP', name: 'World History AP', subject: 'Social Studies', credits: 1.0, gradeLevels: [10], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Evolution of global processes and human societies.', availableInMiddleSchool: false }, // Can sub for WHIST
-    { id: 'USHIST', name: 'U.S. History', subject: 'Social Studies', credits: 1.0, gradeLevels: [11], prerequisites: ['WGEO||WGEADV||HUMGEOAP||WHIST||WHISTAP'], endorsements: ['Multidisciplinary'], description: 'US history from Reconstruction to present.', availableInMiddleSchool: false }, // Updated Prereq Logic
-    { id: 'USHISTAP', name: 'U.S. History AP', subject: 'Social Studies', credits: 1.0, gradeLevels: [11], prerequisites: ['WGEO||WGEADV||HUMGEOAP||WHIST||WHISTAP'], endorsements: ['Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: US history from pre-Columbian to contemporary period.', availableInMiddleSchool: false }, // Updated Prereq Logic
-    { id: 'GOVT', name: 'U.S. Government', subject: 'Social Studies', credits: 0.5, gradeLevels: [12], prerequisites: ['USHIST', 'USHISTAP'], endorsements: ['Multidisciplinary'], description: 'Principles, structure, functions, and powers of US government.', availableInMiddleSchool: false },
-    { id: 'GOVTAP', name: 'U.S. Government AP', subject: 'Social Studies', credits: 0.5, gradeLevels: [12], prerequisites: ['USHIST', 'USHISTAP'], endorsements: ['Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Study of government established by the US Constitution.', availableInMiddleSchool: false },
-    { id: 'ECO', name: 'Economics', subject: 'Social Studies', credits: 0.5, gradeLevels: [12], prerequisites: ['USHIST', 'USHISTAP'], endorsements: ['Multidisciplinary', 'Business & Industry'], description: 'Basic economic principles, production, consumption, distribution.', availableInMiddleSchool: false },
-    { id: 'ECOAPMAC', name: 'Macroeconomics AP', subject: 'Social Studies', credits: 0.5, gradeLevels: [12], prerequisites: ['USHIST', 'USHISTAP'], endorsements: ['Multidisciplinary', 'Business & Industry'], weighted: true, isAP: true, description: 'AP Level: Principles applying to an economic system as a whole.', availableInMiddleSchool: false }, // Can sub for ECO
-    { id: 'ECOAPMIC', name: 'Microeconomics AP', subject: 'Social Studies', credits: 0.5, gradeLevels: [12], prerequisites: ['USHIST', 'USHISTAP'], endorsements: ['Multidisciplinary', 'Business & Industry'], weighted: true, isAP: true, description: 'AP Level: Principles applying to individual decision-makers (consumers/producers).', availableInMiddleSchool: false }, // Elective credit only
-
-    // --- Languages Other Than English (LOTE) ---
-    { id: 'SPAN1', name: 'Spanish I', subject: 'LOTE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Introduction to basic Spanish language skills.', availableInMiddleSchool: true }, // Common MS credit
-    { id: 'SPAN2', name: 'Spanish II', subject: 'LOTE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: ['SPAN1'], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Builds on Spanish I skills.', availableInMiddleSchool: true }, // Common MS credit
-    { id: 'SPAN3ADV', name: 'Spanish III (Advanced)', subject: 'LOTE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: ['SPAN2'], endorsements: ['Arts & Humanities', 'Multidisciplinary'], weighted: true, description: 'Advanced development of Spanish skills.', availableInMiddleSchool: false }, // CORRECTED gradeLevels
-    { id: 'SPANLANGAP', name: 'Spanish Language AP', subject: 'LOTE', credits: 1.0, gradeLevels: [11, 12], prerequisites: ['SPAN3ADV'], endorsements: ['Arts & Humanities', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Advanced communication skills in Spanish.', availableInMiddleSchool: false },
-    { id: 'FR1', name: 'French I', subject: 'LOTE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Introduction to basic French language skills.', availableInMiddleSchool: true }, // Often MS credit
-    { id: 'FR2', name: 'French II', subject: 'LOTE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: ['FR1'], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Builds on French I skills.', availableInMiddleSchool: true }, // Often MS credit
-    { id: 'ASL1', name: 'American Sign Language I', subject: 'LOTE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Introduction to ASL signs, grammar, and culture.', availableInMiddleSchool: false },
-    { id: 'ASL2', name: 'American Sign Language II', subject: 'LOTE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: ['ASL1'], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Builds on ASL I skills.', availableInMiddleSchool: false },
-
-    // --- Fine Arts ---
-    { id: 'ART1', name: 'Art I', subject: 'Fine Arts', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Exploration of art elements, principles, and media.', availableInMiddleSchool: true }, // Sometimes MS credit
-    { id: 'BAND1', name: 'Band I', subject: 'Fine Arts', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Instrumental music performance.', availableInMiddleSchool: false }, // Note: Usually 1.5 credits with PE sub
-    { id: 'CHOIR1', name: 'Choir I', subject: 'Fine Arts', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Vocal music performance.', availableInMiddleSchool: false },
-    { id: 'THEATER1', name: 'Theatre Arts I', subject: 'Fine Arts', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], description: 'Basic acting techniques, technical theatre, interpretation.', availableInMiddleSchool: true }, // Sometimes MS credit
-    { id: 'ART2DRAW', name: 'Art II: Drawing I', subject: 'Fine Arts', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['ART1'], endorsements: ['Arts & Humanities'], description: 'Develop drawing skills and techniques.', availableInMiddleSchool: false },
-    { id: 'MUSICTHAP', name: 'Music Theory AP', subject: 'Fine Arts', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: [], endorsements: ['Arts & Humanities', 'Multidisciplinary'], weighted: true, isAP: true, description: 'AP Level: Study of music theory concepts.', availableInMiddleSchool: false },
-
-    // --- Physical Education (PE) ---
-    { id: 'PEFIT', name: 'Lifetime Fitness & Wellness Pursuits', subject: 'PE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: [], description: 'Focuses on personal fitness and wellness.', availableInMiddleSchool: false },
-    { id: 'PEATH', name: 'Athletics (Generic)', subject: 'PE', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: [], description: 'Participation in school athletics program.', availableInMiddleSchool: false }, // Represents various sports
-
-    // --- Career and Technical Education (CTE) / Electives ---
-    { id: 'PRINHSCI', name: 'Principles of Health Science', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10], prerequisites: [], endorsements: ['PublicService'], description: 'Overview of healthcare systems & careers. Fulfills Health requirement.', availableInMiddleSchool: false },
-    { id: 'MEDTERM', name: 'Medical Terminology', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['PRINHSCI'], endorsements: ['PublicService'], description: 'Structure and comprehension of medical terms.', availableInMiddleSchool: false },
-    { id: 'HSCI_THEORY', name: 'Health Science Theory and Practice', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [11, 12], prerequisites: ['MEDTERM', 'BIO', 'BIOADV'], endorsements: ['PublicService'], description: 'Advanced knowledge and skills for health careers, hands-on experiences.', availableInMiddleSchool: false },
-
-    { id: 'CS1', name: 'Computer Science I', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: ['ALG1'], endorsements: ['STEM', 'Business & Industry', 'Multidisciplinary', 'LOTE Sub'], description: 'Introduction to programming and problem solving. Can substitute LOTE.', availableInMiddleSchool: false },
-    { id: 'CSAP', name: 'Computer Science A AP', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['CS1'], endorsements: ['STEM', 'Multidisciplinary', 'LOTE Sub'], weighted: true, isAP: true, description: 'AP Level: Object-oriented programming (Java). Can substitute LOTE. Counts as Math credit for Foundation plan.', availableInMiddleSchool: false },
-    { id: 'CSP', name: 'Computer Science Principles AP', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], coRequisites: ['ALG1'], endorsements: ['STEM', 'Business & Industry', 'Multidisciplinary', 'LOTE Sub'], weighted: true, isAP: true, description: 'AP Level: Foundational concepts of computer science. Can substitute LOTE.', availableInMiddleSchool: false },
-    { id: 'PRINARCH', name: 'Principles of Architecture', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10, 11], prerequisites: [], endorsements: ['STEM', 'Business & Industry'], description: 'Introduction to architecture and interior design fields.', availableInMiddleSchool: false },
-    { id: 'ARCHDES1', name: 'Architectural Design I', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['PRINARCH', 'ALG1'], endorsements: ['STEM', 'Business & Industry'], description: 'Project-based design studio for architecture.', availableInMiddleSchool: false },
-    { id: 'PRINBMF', name: 'Principles of Business, Marketing, & Finance', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10], prerequisites: [], endorsements: ['Business & Industry', 'Multidisciplinary'], description: 'Overview of business, marketing, and finance concepts.', availableInMiddleSchool: false },
-    { id: 'BIM1', name: 'Business Information Management I', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['Business & Industry', 'Multidisciplinary'], description: 'Apply technical skills using business software (word processing, spreadsheets, databases).', availableInMiddleSchool: false },
-    { id: 'PRINLAW', name: 'Principles of Law, Public Safety, Corrections, & Security', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10, 11, 12], prerequisites: [], endorsements: ['PublicService', 'Multidisciplinary'], description: 'Introduction to law enforcement, security, corrections, emergency services.', availableInMiddleSchool: false },
-    { id: 'LAWENF1', name: 'Law Enforcement I', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [10, 11, 12], prerequisites: ['PRINLAW'], endorsements: ['PublicService'], description: 'Overview of history, organization, and functions of law enforcement.', availableInMiddleSchool: false },
-    { id: 'PRINHOSP', name: 'Principles of Hospitality and Tourism', subject: 'CTE/Elective', credits: 1.0, gradeLevels: [9, 10, 11], prerequisites: [], endorsements: ['Business & Industry'], description: 'Overview of lodging, travel, tourism, recreation, food service.', availableInMiddleSchool: false },
-    { id: 'CULIARTS', name: 'Culinary Arts', subject: 'CTE/Elective', credits: 2.0, gradeLevels: [10, 11, 12], prerequisites: ['PRINHOSP'], endorsements: ['Business & Industry'], description: 'Fundamentals of cooking and baking.', availableInMiddleSchool: false },
-    { id: 'AVID1', name: 'AVID I', subject: 'Elective', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: [], description: 'College readiness program focusing on academic skills.', availableInMiddleSchool: false },
-    { id: 'JROTC1', name: 'JROTC I (Generic)', subject: 'Elective', credits: 1.0, gradeLevels: [9], prerequisites: [], endorsements: ['PublicService'], description: 'Leadership education program. Can substitute PE.', availableInMiddleSchool: false }, // Represents AFJROTC, MCJROTC, NJROTC
-];
+// NOTE: coursesData constant is REMOVED. It will be loaded dynamically.
 
 const graduationPlansData = {
   foundation: {
@@ -161,107 +95,8 @@ const subjectMap = {
 };
 
 // --- Utility Functions ---
-
-// Finds a course object by its ID
-const findCourseById = (id) => coursesData.find(course => course.id === id);
-
-// Checks if prerequisites for a course are met given selected courses so far AND middle school credits
-const checkPrerequisites = (courseId, selectedCoursesByYear, middleSchoolCredits = [], targetYear) => {
-    const course = findCourseById(courseId);
-    if (!course || !course.prerequisites || course.prerequisites.length === 0) {
-        return { met: true, message: '' };
-    }
-
-    // Combine middle school credits and courses from previous high school years
-    const completedCourseIds = new Set([
-        ...middleSchoolCredits,
-        ...Object.entries(selectedCoursesByYear)
-            .filter(([year]) => parseInt(year) < targetYear)
-            .flatMap(([, courses]) => courses)
-    ]);
-
-    let prerequisitesMet = true;
-    let unmetMessages = [];
-
-    // Handle OR conditions (e.g., "COURSEA||COURSEB") and standard prerequisites
-    const requiredSets = course.prerequisites.map(prereq => prereq.split('||').map(s => s.trim()));
-
-    for (const reqSet of requiredSets) {
-        // Check if at least one course in the OR set (or the single course if no OR) is completed
-        const metThisSet = reqSet.some(reqId => completedCourseIds.has(reqId));
-        if (!metThisSet) {
-            prerequisitesMet = false;
-            const courseNames = reqSet.map(id => findCourseById(id)?.name || id).join(' OR ');
-            unmetMessages.push(`Requires ${courseNames}`);
-        }
-    }
-
-    // Check Co-requisites (simplified: assumes concurrent enrollment in the same year)
-    if (course.coRequisites && course.coRequisites.length > 0) {
-        const currentYearCourses = new Set(selectedCoursesByYear[targetYear] || []);
-        const metCoReqs = course.coRequisites.every(reqId => currentYearCourses.has(reqId));
-         if (!metCoReqs && prerequisitesMet) { // Only show co-req warning if prereqs are met
-             const coReqNames = course.coRequisites.map(id => findCourseById(id)?.name || id).join(', ');
-             unmetMessages.push(`(Co-requisite suggested: ${coReqNames} in the same year)`);
-             // We don't block adding based on co-reqs in this version, just warn
-         }
-    }
-
-    return { met: prerequisitesMet, message: unmetMessages.join('. ') };
-};
-
-
-// Calculates credits earned per subject, including middle school credits
-const calculateCredits = (selectedCoursesByYear, middleSchoolCredits = []) => {
-    const credits = { ELA: 0, Math: 0, Science: 0, SocialStudies: 0, LOTE: 0, FineArts: 0, PE: 0, Electives: 0, Total: 0 };
-    const uniqueCourseIds = new Set(); // Track processed courses
-
-    const allCourseIds = [...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()];
-
-    allCourseIds.forEach(courseId => {
-        if (uniqueCourseIds.has(courseId)) return; // Skip if already counted
-
-        const course = findCourseById(courseId);
-        if (course) {
-            uniqueCourseIds.add(courseId);
-            const subjectCategory = subjectMap[course.subject] || 'Electives';
-            let credited = false; // Flag to check if credit was applied to a specific category
-
-            // Determine the maximum required credits for the subject based on the DLA plan (highest requirement)
-            const maxRequired = graduationPlansData.dla.requirements[subjectCategory] || 0;
-
-            // 1. Handle LOTE Substitution (Simplified)
-            // Only substitute if LOTE requirement is not yet met
-            if (course.endorsements?.includes('LOTE Sub') && credits.LOTE < graduationPlansData.dla.requirements.LOTE) {
-                 credits.LOTE += course.credits;
-                 credited = true;
-            }
-            // 2. Apply to primary subject category if needed
-            // Apply credit if the category exists and the current credits are below the max required for DLA
-            else if (subjectCategory !== 'Electives' && credits[subjectCategory] < maxRequired) {
-                 // Add credit, but don't exceed the max required for the category
-                 const creditToAdd = Math.min(course.credits, maxRequired - credits[subjectCategory]);
-                 credits[subjectCategory] += creditToAdd;
-                 // Add any remaining credit from the course to electives
-                 const remainingCredit = course.credits - creditToAdd;
-                 if (remainingCredit > 0) {
-                     credits.Electives += remainingCredit;
-                 }
-                 credited = true; // Mark as credited even if partially applied to subject
-            }
-
-            // 3. If not applied to a specific category above OR if it's explicitly an elective, add full credit to Electives
-            if (!credited) {
-                 credits.Electives += course.credits;
-            }
-
-             credits.Total += course.credits; // Always add to total
-        }
-    });
-
-    return credits;
-};
-
+// NOTE: These functions now need access to the loaded course data (`allCoursesData`)
+// They are defined inside the App component or accept the data as an argument.
 
 // --- Components ---
 
@@ -315,7 +150,10 @@ const CourseSelector = ({ title, availableCourses, onSelectCourse, onClose, show
     const grades = useMemo(() => {
         if (!showGradeFilter) return [];
         const levels = new Set();
-        availableCourses.forEach(c => c.gradeLevels.forEach(lvl => levels.add(lvl)));
+        // Ensure availableCourses is an array before processing
+        if (Array.isArray(availableCourses)) {
+            availableCourses.forEach(c => c?.gradeLevels?.forEach(lvl => levels.add(lvl)));
+        }
         return ['All', ...Array.from(levels).sort((a, b) => a - b)];
     }, [availableCourses, showGradeFilter]);
 
@@ -413,28 +251,35 @@ const CourseSelector = ({ title, availableCourses, onSelectCourse, onClose, show
 };
 
 // Displays the plan for a single year
-const YearPlan = ({ year, selectedCoursesInYear, allCourses, middleSchoolCredits, selectedCoursesByYear, addCourse, removeCourse, setWarnings }) => {
+// Needs access to findCourseById and checkPrerequisites (or the data needed for them)
+const YearPlan = ({
+    year,
+    selectedCoursesInYear,
+    allCourses, // Now the full loaded dataset
+    middleSchoolCredits,
+    selectedCoursesByYear,
+    addCourse,
+    removeCourse,
+    setWarnings,
+    findCourseById, // Pass helper function
+    checkPrerequisites // Pass helper function
+}) => {
     const [showSelector, setShowSelector] = useState(false);
 
-    const coursesInYear = selectedCoursesInYear.map(findCourseById).filter(Boolean); // Get full course objects
+    // Get full course objects for courses selected in this specific year
+    const coursesInYear = selectedCoursesInYear.map(findCourseById).filter(Boolean);
 
      // Filter available courses for the selector for *this* year
-     // CORRECTED: Now filters based on prerequisites being met *before* showing
      const availableCoursesForSelector = useMemo(() => {
+         // Combine all selected IDs (MS + all HS years) to check for already selected
          const allSelectedIds = new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]);
-         // Calculate completed IDs *before* this year for prereq check
-         const completedIdsForPrereqCheck = new Set([
-             ...middleSchoolCredits,
-             ...Object.entries(selectedCoursesByYear)
-                 .filter(([y]) => parseInt(y) < year)
-                 .flatMap(([, courses]) => courses)
-         ]);
 
+         // Filter the master list of all courses
          return allCourses.filter(course => {
              // Basic checks
-             if (!course || !course.gradeLevels || !course.id || !course.name) return false; // Ensure course object is valid
+             if (!course || !course.gradeLevels || !course.id || !course.name) return false;
 
-             // Check grade level
+             // Check grade level eligibility for the current year plan
              if (!course.gradeLevels.includes(year)) {
                  return false;
              }
@@ -442,34 +287,30 @@ const YearPlan = ({ year, selectedCoursesInYear, allCourses, middleSchoolCredits
              if (allSelectedIds.has(course.id)) {
                   return false;
              }
-             // Check prerequisites before showing in the list
-             if (course.prerequisites && course.prerequisites.length > 0) {
-                 const requiredSets = course.prerequisites.map(prereq => prereq.split('||').map(s => s.trim()));
-                 const prereqsMet = requiredSets.every(reqSet =>
-                     reqSet.some(reqId => completedIdsForPrereqCheck.has(reqId))
-                 );
-                 if (!prereqsMet) {
-                     return false; // Don't show if prerequisites aren't met
-                 }
+             // Check prerequisites *before* showing in the list
+             // Pass allCoursesData to checkPrerequisites here
+             const prereqCheckResult = checkPrerequisites(course.id, selectedCoursesByYear, middleSchoolCredits, year, allCourses);
+             if (!prereqCheckResult.met) {
+                 return false; // Don't show if prerequisites aren't met
              }
-             return true;
+             return true; // If all checks pass, include the course
          });
-     }, [allCourses, year, middleSchoolCredits, selectedCoursesByYear]);
+     }, [allCourses, year, middleSchoolCredits, selectedCoursesByYear, checkPrerequisites]); // Dependencies
 
 
     const handleAddCourse = (courseId) => {
         const course = findCourseById(courseId);
         if (!course) return;
 
-        // Prerequisite check is now primarily handled by the filtering logic above.
-        // We can still check for co-requisites here if needed, or simply add.
+        // Prerequisite check is handled by filtering logic above.
+        // Add the course via the callback passed from App
         addCourse(year, courseId);
         setShowSelector(false); // Close selector on successful add
 
-        // Check for co-requisite warnings (optional)
+        // Optional: Check for co-requisite warnings after adding
         if (course.coRequisites && course.coRequisites.length > 0) {
-             const currentYearCourses = new Set(selectedCoursesByYear[year] || []);
-             const metCoReqs = course.coRequisites.every(reqId => currentYearCourses.has(reqId) || reqId === courseId); // Check if co-req is the course being added or already there
+             const currentYearCoursesPlusNew = new Set([...(selectedCoursesByYear[year] || []), courseId]); // Include the newly added course
+             const metCoReqs = course.coRequisites.every(reqId => currentYearCoursesPlusNew.has(reqId));
              if (!metCoReqs) {
                  const coReqNames = course.coRequisites.map(id => findCourseById(id)?.name || id).join(', ');
                  setWarnings(prev => [...new Set([...prev, `Co-requisite suggested for ${course.name}: ${coReqNames} in Grade ${year}`])]);
@@ -514,21 +355,30 @@ const YearPlan = ({ year, selectedCoursesInYear, allCourses, middleSchoolCredits
 };
 
 // Component to manage Middle School Credits
-const MiddleSchoolCredits = ({ middleSchoolCredits, addMiddleSchoolCredit, removeMiddleSchoolCredit }) => {
+// Needs access to findCourseById and allCourses data
+const MiddleSchoolCredits = ({
+    middleSchoolCredits,
+    addMiddleSchoolCredit,
+    removeMiddleSchoolCredit,
+    allCourses, // Pass the loaded course data
+    findCourseById // Pass the helper function
+}) => {
     const [showSelector, setShowSelector] = useState(false);
 
+    // Get full course objects for selected MS credits
     const msCourses = middleSchoolCredits.map(findCourseById).filter(Boolean);
 
-    // Filter courses potentially available in Middle School (Grade 9, no prereqs, or explicitly flagged)
+    // Filter courses potentially available in Middle School
     const availableCoursesForSelector = useMemo(() => {
         const selectedIds = new Set(middleSchoolCredits);
-        return coursesData.filter(course =>
+        // Filter from the master list of all courses
+        return allCourses.filter(course =>
             course && // Ensure course object exists
             !selectedIds.has(course.id) && // Not already selected
             (course.availableInMiddleSchool === true || // Explicitly flagged
              (course.gradeLevels?.includes(9) && (!course.prerequisites || course.prerequisites.length === 0))) // Or Grade 9 with no prereqs
         );
-    }, [middleSchoolCredits]);
+    }, [allCourses, middleSchoolCredits]); // Depend on the full course list and selected MS credits
 
     const handleAddCredit = (courseId) => {
         addMiddleSchoolCredit(courseId);
@@ -586,6 +436,7 @@ const GraduationProgress = ({ credits, plan }) => {
          // Sum credits applied to required categories, capped at the required amount for each category
          .reduce((sum, [key, value]) => sum + Math.min(value, requirements[key]), 0);
 
+     // Calculate the elective credits needed to reach the total plan credits
      const requiredElectives = Math.max(0, totalRequired - currentTotalInRequiredCategories);
      const electiveProgress = credits.Electives; // Use directly calculated electives from calculateCredits
 
@@ -600,12 +451,13 @@ const GraduationProgress = ({ credits, plan }) => {
                     if (subjectKey === 'Electives') {
                          const displayRequired = requiredElectives; // Show calculated need
                          const displayCurrent = electiveProgress;
+                         // Elective requirement is met if the earned electives meet or exceed the calculated need
                          const displayIsMet = displayCurrent >= displayRequired;
                          return (
                              <div key={subjectKey} className="text-sm">
-                                 <span className="font-medium">{subjectKey}:</span> {displayCurrent.toFixed(1)} / {displayRequired.toFixed(1)} Credits
-                                 <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${displayIsMet ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
-                                     {displayIsMet ? 'Met' : 'Needed'}
+                                 <span className="font-medium">{subjectKey}:</span> {displayCurrent.toFixed(1)} / {displayRequired.toFixed(1)} Credits Needed
+                                 <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${displayIsMet ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
+                                     {displayIsMet ? 'Met' : 'In Progress'} {/* Changed 'Needed' to 'In Progress' for clarity */}
                                  </span>
                              </div>
                          );
@@ -633,12 +485,14 @@ const GraduationProgress = ({ credits, plan }) => {
 };
 
 // Displays DLA status and guidance
-const DLAGuidance = ({ selectedCoursesByYear, middleSchoolCredits, planType }) => {
+// Needs access to findCourseById
+const DLAGuidance = ({ selectedCoursesByYear, middleSchoolCredits, planType, findCourseById }) => {
      if (planType !== 'dla') return null; // Only show for DLA plan
 
     const allSelectedIds = useMemo(() => new Set([...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()]), [middleSchoolCredits, selectedCoursesByYear]);
     const hasAlgebra2 = graduationPlansData.dla.specificCourses.some(id => allSelectedIds.has(id));
-    const algebra2Course = findCourseById('ALG2') || findCourseById('ALG2ADV'); // Find the course for guidance
+    // Use findCourseById passed from App
+    const algebra2Course = findCourseById('ALG2') || findCourseById('ALG2ADV');
 
     return (
         <div className="p-4 bg-purple-50 rounded-lg shadow mt-4 h-full">
@@ -691,87 +545,218 @@ const EndorsementTracker = ({ selectedCoursesByYear, middleSchoolCredits, planTy
 // --- Main App Component ---
 
 function App() {
+    // --- State ---
     const [selectedPlanType, setSelectedPlanType] = useState('dla'); // Default to DLA
     const [selectedCourses, setSelectedCourses] = useState({ 9: [], 10: [], 11: [], 12: [] });
-    const [middleSchoolCredits, setMiddleSchoolCredits] = useState([]); // NEW state for MS credits
+    const [middleSchoolCredits, setMiddleSchoolCredits] = useState([]);
     const [warnings, setWarnings] = useState([]);
-    const [isDataLoaded, setIsDataLoaded] = useState(false);
-    const [isClient, setIsClient] = useState(false); // State to track client-side rendering
+    const [isDataLoaded, setIsDataLoaded] = useState(false); // Tracks if initial localStorage load attempt is done
+    const [isClient, setIsClient] = useState(false);
 
-     // Ensure client-side only rendering for effects using localStorage
-     useEffect(() => {
+    // State for loaded course data
+    const [allCoursesData, setAllCoursesData] = useState([]); // Holds data from JSON files
+    const [isLoading, setIsLoading] = useState(true); // Tracks if JSON data is loading
+    const [loadingError, setLoadingError] = useState(null); // Stores JSON loading errors
+
+    // --- Effects ---
+
+    // Effect to mark client-side rendering and load html2canvas script
+    useEffect(() => {
        setIsClient(true);
-       // Dynamically load html2canvas script
        const scriptId = 'html2canvas-script';
        if (!document.getElementById(scriptId)) {
            const script = document.createElement('script');
            script.id = scriptId;
            script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
            script.async = true;
-           script.onload = () => console.log('html2canvas loaded successfully.'); // Log success
-           script.onerror = () => console.error('Failed to load html2canvas script.'); // Log error
+           script.onload = () => console.log('html2canvas loaded successfully.');
+           script.onerror = () => console.error('Failed to load html2canvas script.');
            document.body.appendChild(script);
        }
      }, []);
 
-
-    // Load saved data from localStorage on initial render
+    // Effect to load saved selections from localStorage
     useEffect(() => {
-        // Check if localStorage is available and if we are on the client
         if (isClient && typeof window !== 'undefined' && window.localStorage) {
             const savedPlan = localStorage.getItem('graduationPlan');
             const savedCourses = localStorage.getItem('selectedCourses');
-            const savedMsCredits = localStorage.getItem('middleSchoolCredits'); // Load MS credits
+            const savedMsCredits = localStorage.getItem('middleSchoolCredits');
 
-            if (savedPlan) {
-                setSelectedPlanType(savedPlan);
-            }
+            if (savedPlan) setSelectedPlanType(savedPlan);
             if (savedCourses) {
                 try {
                      const parsedCourses = JSON.parse(savedCourses);
                      if (typeof parsedCourses === 'object' && parsedCourses !== null && [9,10,11,12].every(y => Array.isArray(parsedCourses[y]))) {
                          setSelectedCourses(parsedCourses);
-                     } else {
-                         localStorage.removeItem('selectedCourses');
-                     }
-                } catch (e) {
-                     localStorage.removeItem('selectedCourses');
-                }
+                     } else { localStorage.removeItem('selectedCourses'); }
+                } catch (e) { localStorage.removeItem('selectedCourses'); }
             }
-             if (savedMsCredits) { // Load MS credits
+             if (savedMsCredits) {
                  try {
                      const parsedMsCredits = JSON.parse(savedMsCredits);
                      if (Array.isArray(parsedMsCredits)) {
                          setMiddleSchoolCredits(parsedMsCredits);
-                     } else {
-                          localStorage.removeItem('middleSchoolCredits');
-                     }
-                 } catch (e) {
-                      localStorage.removeItem('middleSchoolCredits');
-                 }
+                     } else { localStorage.removeItem('middleSchoolCredits'); }
+                 } catch (e) { localStorage.removeItem('middleSchoolCredits'); }
              }
         }
-         setIsDataLoaded(true); // Mark data loading attempt as complete
-    }, [isClient]); // Depend on isClient to ensure this runs client-side
+         setIsDataLoaded(true); // Mark initial load attempt complete
+    }, [isClient]);
 
-    // Save data to localStorage whenever it changes
+    // Effect to save selections to localStorage
     useEffect(() => {
-         // Only save after initial load attempt is complete and on client
          if (isClient && isDataLoaded && typeof window !== 'undefined' && window.localStorage) {
              localStorage.setItem('graduationPlan', selectedPlanType);
              localStorage.setItem('selectedCourses', JSON.stringify(selectedCourses));
-             localStorage.setItem('middleSchoolCredits', JSON.stringify(middleSchoolCredits)); // Save MS credits
+             localStorage.setItem('middleSchoolCredits', JSON.stringify(middleSchoolCredits));
          }
-    }, [selectedPlanType, selectedCourses, middleSchoolCredits, isDataLoaded, isClient]); // Add dependencies
+    }, [selectedPlanType, selectedCourses, middleSchoolCredits, isDataLoaded, isClient]);
+
+    // Effect to fetch course data from JSON files on mount
+    useEffect(() => {
+        const fetchCourseData = async () => {
+            // Use the filenames provided by the user
+            const files = [
+                'ela_courses.json',
+                'math_courses.json',
+                'science_courses.json',
+                'social_study_courses.json', // Use the user's filename
+                'lote_courses.json',
+                'art_courses.json',         // Use the user's filename
+                'pe_courses.json',
+                'cte_elective_courses.json',// Use the user's filename
+                'elective_courses.json'     // Use the user's filename
+            ];
+            setIsLoading(true); // Start loading
+            setLoadingError(null); // Reset error
+
+            try {
+                const fetchPromises = files.map(file =>
+                    fetch(file).then(response => {
+                        if (!response.ok) {
+                            // Provide more specific error info
+                            throw new Error(`Failed to load ${file}: ${response.status} ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                );
+
+                const results = await Promise.all(fetchPromises);
+                const combinedCourses = results.flat(); // Combine arrays from all files
+                setAllCoursesData(combinedCourses); // Store combined data in state
+                console.log("Course data loaded successfully:", combinedCourses.length, "courses");
+            } catch (error) {
+                console.error("Failed to load course data:", error);
+                // Set a user-friendly error message
+                setLoadingError(`Error loading course data: ${error.message}. Check console and ensure JSON files exist and are accessible.`);
+                setAllCoursesData([]); // Ensure data is cleared on error
+            } finally {
+                setIsLoading(false); // Finish loading (success or fail)
+            }
+        };
+
+        fetchCourseData();
+    }, []); // Empty dependency array means this runs once when the component mounts
+
+
+    // --- Utility Functions (Defined within App to access state/props easily) ---
+
+    // Finds a course object by its ID using the loaded data
+    const findCourseById = useCallback((id) => {
+        return allCoursesData.find(course => course.id === id);
+    }, [allCoursesData]); // Dependency: Recreate if course data changes
+
+    // Checks if prerequisites for a course are met
+    // Now accepts allCoursesData as an argument
+    const checkPrerequisites = useCallback((courseId, selectedCoursesByYear, middleSchoolCredits = [], targetYear, coursesData) => {
+        const course = coursesData.find(c => c.id === courseId); // Find course in passed data
+        if (!course || !course.prerequisites || course.prerequisites.length === 0) {
+            return { met: true, message: '' };
+        }
+
+        const completedCourseIds = new Set([
+            ...middleSchoolCredits,
+            ...Object.entries(selectedCoursesByYear)
+                .filter(([year]) => parseInt(year) < targetYear)
+                .flatMap(([, courses]) => courses)
+        ]);
+
+        let prerequisitesMet = true;
+        let unmetMessages = [];
+        const requiredSets = course.prerequisites.map(prereq => prereq.split('||').map(s => s.trim()));
+
+        for (const reqSet of requiredSets) {
+            const metThisSet = reqSet.some(reqId => completedCourseIds.has(reqId));
+            if (!metThisSet) {
+                prerequisitesMet = false;
+                // Use findCourseById (which uses allCoursesData state) for names
+                const courseNames = reqSet.map(id => findCourseById(id)?.name || id).join(' OR ');
+                unmetMessages.push(`Requires ${courseNames}`);
+            }
+        }
+
+        // Simplified Co-requisite check (warning only)
+        if (course.coRequisites && course.coRequisites.length > 0) {
+            const currentYearCourses = new Set(selectedCoursesByYear[targetYear] || []);
+            const metCoReqs = course.coRequisites.every(reqId => currentYearCourses.has(reqId));
+             if (!metCoReqs && prerequisitesMet) {
+                 const coReqNames = course.coRequisites.map(id => findCourseById(id)?.name || id).join(', ');
+                 unmetMessages.push(`(Co-requisite suggested: ${coReqNames} in the same year)`);
+             }
+        }
+
+        return { met: prerequisitesMet, message: unmetMessages.join('. ') };
+    }, [findCourseById]); // Dependency: findCourseById (which depends on allCoursesData)
+
+    // Calculates credits earned per subject
+    // Now accepts allCoursesData as an argument
+    const calculateCredits = useCallback((selectedCoursesByYear, middleSchoolCredits = [], coursesData) => {
+        const credits = { ELA: 0, Math: 0, Science: 0, SocialStudies: 0, LOTE: 0, FineArts: 0, PE: 0, Electives: 0, Total: 0 };
+        const uniqueCourseIds = new Set();
+        const allCourseIds = [...middleSchoolCredits, ...Object.values(selectedCoursesByYear).flat()];
+
+        allCourseIds.forEach(courseId => {
+            if (uniqueCourseIds.has(courseId)) return;
+
+            const course = coursesData.find(c => c.id === courseId); // Find in passed data
+            if (course) {
+                uniqueCourseIds.add(courseId);
+                const subjectCategory = subjectMap[course.subject] || 'Electives';
+                let credited = false;
+                const maxRequired = graduationPlansData.dla.requirements[subjectCategory] || 0;
+
+                // LOTE Substitution
+                if (course.endorsements?.includes('LOTE Sub') && credits.LOTE < graduationPlansData.dla.requirements.LOTE) {
+                     credits.LOTE += course.credits;
+                     credited = true;
+                }
+                // Apply to primary subject if needed
+                else if (subjectCategory !== 'Electives' && credits[subjectCategory] < maxRequired) {
+                     const creditToAdd = Math.min(course.credits, maxRequired - credits[subjectCategory]);
+                     credits[subjectCategory] += creditToAdd;
+                     const remainingCredit = course.credits - creditToAdd;
+                     if (remainingCredit > 0) credits.Electives += remainingCredit;
+                     credited = true;
+                }
+                // Apply to Electives if not credited elsewhere
+                if (!credited) {
+                     credits.Electives += course.credits;
+                }
+                 credits.Total += course.credits;
+            }
+        });
+        return credits;
+    }, []); // No direct state dependencies here, but uses data passed in
+
+
+    // --- Callbacks ---
 
     // Add course to a specific HS year
     const addCourse = useCallback((year, courseId) => {
-        // Prevent adding if already a middle school credit
         if (middleSchoolCredits.includes(courseId)) {
             setWarnings(prev => [...new Set([...prev, `${findCourseById(courseId)?.name || courseId} was already added as a Middle School credit.`])]);
             return;
         }
-
         setSelectedCourses(prev => {
             const yearCourses = prev[year] || [];
             if (!yearCourses.includes(courseId)) {
@@ -779,11 +764,10 @@ function App() {
             }
             return prev;
         });
-         // Clear prerequisite warnings related to this course if successfully added
          const courseName = findCourseById(courseId)?.name || courseId;
-         setWarnings(prev => prev.filter(w => !w.startsWith(`Prerequisite check for ${courseName}`)));
-         setWarnings(prev => prev.filter(w => !w.startsWith(`Co-requisite suggested for ${courseName}`))); // Also clear co-req warnings
-    }, [middleSchoolCredits]); // Add middleSchoolCredits dependency
+         setWarnings(prev => prev.filter(w => !w.includes(`Prerequisite check for ${courseName}`)));
+         setWarnings(prev => prev.filter(w => !w.includes(`Co-requisite suggested for ${courseName}`)));
+    }, [middleSchoolCredits, findCourseById]);
 
     // Remove course from a specific HS year
     const removeCourse = useCallback((year, courseId) => {
@@ -795,20 +779,18 @@ function App() {
 
      // Add a course credit earned in Middle School
      const addMiddleSchoolCredit = useCallback((courseId) => {
-         // Prevent adding if already selected in HS years
          const alreadyInHS = Object.values(selectedCourses).flat().includes(courseId);
          if (alreadyInHS) {
              setWarnings(prev => [...new Set([...prev, `${findCourseById(courseId)?.name || courseId} is already selected in your High School plan.`])]);
              return;
          }
-
          setMiddleSchoolCredits(prev => {
              if (!prev.includes(courseId)) {
                  return [...prev, courseId];
              }
-             return prev; // No change if already added
+             return prev;
          });
-     }, [selectedCourses]); // Add selectedCourses dependency
+     }, [selectedCourses, findCourseById]);
 
       // Remove a course credit earned in Middle School
      const removeMiddleSchoolCredit = useCallback((courseId) => {
@@ -819,88 +801,91 @@ function App() {
          setWarnings([]);
      }, []);
 
-    // Memoized calculation for display data
+    // Memoized calculation for display data (depends on loaded courses)
     const displayData = useMemo(() => {
         const planDetails = graduationPlansData[selectedPlanType];
-        const credits = calculateCredits(selectedCourses, middleSchoolCredits);
-        // Calculate required electives for display
-        const currentTotalInRequiredCategories = Object.entries(credits)
-            .filter(([key]) => key !== 'Electives' && key !== 'Total' && planDetails?.requirements?.[key] !== undefined)
-            .reduce((sum, [key, value]) => sum + Math.min(value, planDetails.requirements[key]), 0);
-        const requiredElectives = Math.max(0, (planDetails?.totalCredits || 0) - currentTotalInRequiredCategories);
+        // Pass allCoursesData to calculateCredits
+        const credits = calculateCredits(selectedCourses, middleSchoolCredits, allCoursesData);
+        return { credits, planDetails };
+    }, [selectedPlanType, selectedCourses, middleSchoolCredits, allCoursesData, calculateCredits]); // Add dependencies
 
-        return {
-            credits,
-            planDetails,
-            requiredElectives
-        };
-    }, [selectedPlanType, selectedCourses, middleSchoolCredits]);
-
-    // PNG Export Handler - Now uses window.html2canvas
+    // PNG Export Handler
     const handleExportPNG = useCallback(() => {
-        console.log("Export button clicked"); // Log: Button click
+        console.log("Export button clicked");
         const exportContent = document.getElementById('plan-export-content');
-        // Check if html2canvas function exists on the window object
         if (exportContent && typeof window.html2canvas === 'function') {
-            console.log("html2canvas function found, attempting render..."); // Log: Found function
-            exportContent.classList.add('exporting-png');
-            setTimeout(() => {
-                window.html2canvas(exportContent, { // Use window.html2canvas
+            console.log("html2canvas function found, attempting render...");
+            exportContent.classList.add('exporting-png'); // Add class for styling during export
+            setTimeout(() => { // Timeout allows styles to apply briefly
+                window.html2canvas(exportContent, {
                     scale: 2,
                     useCORS: true,
-                    logging: true, // Enable more verbose logging from html2canvas
-                    backgroundColor: '#f9fafb', // Match export wrapper background
+                    logging: true,
+                    backgroundColor: '#f9fafb', // Ensure background color is set
                  }).then(canvas => {
-                    console.log("html2canvas promise resolved, generating image..."); // Log: Success
+                    console.log("html2canvas generated canvas");
                     const image = canvas.toDataURL('image/png');
                     const link = document.createElement('a');
-                    // --- Change for PNG Debugging: Open in new tab ---
-                    link.target = '_blank';
-                    // link.download = `RRISD_Graduation_Plan_${displayData.planDetails?.name?.replace(/\s+/g, '_') || 'Plan'}.png`; // Download attribute removed
+                    link.download = `RRISD_Graduation_Plan_${displayData.planDetails?.name?.replace(/\s+/g, '_') || 'Plan'}.png`;
                     link.href = image;
                     link.click();
-                    console.log("New tab triggered."); // Log: New tab trigger
-                    // --- End Change ---
-                    exportContent.classList.remove('exporting-png');
+                    console.log("Download triggered.");
+                    exportContent.classList.remove('exporting-png'); // Remove class after export
                 }).catch(err => {
-                    console.error("Error generating PNG:", err); // Log: Error
-                    setWarnings(prev => [...new Set([...prev, `Error generating PNG: ${err.message}. Check console.`])]); // Show error in UI
+                    console.error("Error generating PNG:", err);
+                    setWarnings(prev => [...new Set([...prev, `Error generating PNG: ${err.message}. Check console.`])]);
                     exportContent.classList.remove('exporting-png');
                 });
-            }, 100);
+            }, 100); // Small delay
         } else if (!exportContent){
-            console.error("Export content area 'plan-export-content' not found"); // Log: Element not found
-            setWarnings(prev => [...new Set([...prev, "Could not find content to export."])]); // Show error in UI
+            console.error("Export content area 'plan-export-content' not found");
+            setWarnings(prev => [...new Set([...prev, "Could not find content to export."])]);
         } else {
-             console.error("html2canvas is not loaded or not a function. Ensure the script tag loaded correctly."); // Log: Function not found
-             setWarnings(prev => [...new Set([...prev, "PNG Export library (html2canvas) not loaded. Please wait or check console."])]); // Show error in UI
+             console.error("html2canvas is not loaded or not a function.");
+             setWarnings(prev => [...new Set([...prev, "PNG Export library (html2canvas) not loaded. Please wait or check console."])]);
         }
-    }, [displayData.planDetails?.name, setWarnings]); // Added setWarnings dependency
+    }, [displayData.planDetails?.name, setWarnings]); // Dependencies
 
+    // --- Render Logic ---
 
-    // --- Main Render ---
+     // 1. Handle Client-Side Only Rendering Check
      if (!isClient) {
-         // Render placeholder or null during SSR or before client hydration
-         return <div className="container mx-auto p-4 font-sans text-center">Loading Planner...</div>;
+         return <div className="container mx-auto p-4 font-sans text-center">Initializing Planner...</div>;
      }
 
+     // 2. Handle Loading State for Course Data
+     if (isLoading) {
+         return <div className="container mx-auto p-4 text-center">Loading course data...</div>;
+     }
+
+     // 3. Handle Course Data Loading Error
+     if (loadingError) {
+         return <div className="container mx-auto p-4 text-center text-red-600 border border-red-300 bg-red-50 rounded p-4">
+             <h2 class="text-lg font-semibold mb-2">Error Loading Data</h2>
+             <p>{loadingError}</p>
+             <p class="mt-2 text-sm text-gray-700">Please ensure all JSON course files are in the same directory as this HTML file and are correctly formatted. You may need to run a local web server.</p>
+          </div>;
+     }
+
+     // 4. Render the Main Application UI (if client-side, not loading, no errors)
     return (
         <div className="container mx-auto p-4 font-sans">
-            {/* Content to be exported */}
-            <div id="plan-export-content" className="bg-gray-50 p-4 rounded-lg"> {/* Added wrapper and bg */}
+            {/* Wrapper for PNG export content */}
+            <div id="plan-export-content" className="bg-gray-50 p-4 rounded-lg">
                 <header className="mb-6 text-center">
                     <h1 className="text-3xl font-bold text-blue-700">RRISD 4-Year Graduation Planner</h1>
                     <p className="text-gray-600">Plan your high school journey!</p>
                     <p className="text-xs text-red-600 mt-1">Disclaimer: Uses representative data. Always consult official RRISD resources and your counselor.</p>
                 </header>
 
-                {/* Middle School Credits Section */}
+                {/* Middle School Credits Section - Pass necessary props */}
                 <MiddleSchoolCredits
                     middleSchoolCredits={middleSchoolCredits}
                     addMiddleSchoolCredit={addMiddleSchoolCredit}
                     removeMiddleSchoolCredit={removeMiddleSchoolCredit}
+                    allCourses={allCoursesData} // Pass loaded data
+                    findCourseById={findCourseById} // Pass helper
                 />
-
 
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg shadow flex flex-wrap justify-between items-center gap-4">
                     <div>
@@ -919,51 +904,66 @@ function App() {
                      {/* PNG Export Button */}
                      <button
                          onClick={handleExportPNG}
-                         className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition duration-150 ease-in-out"
+                         disabled={isLoading || !!loadingError} // Disable if loading or error
+                         className={`px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition duration-150 ease-in-out ${isLoading || !!loadingError ? 'opacity-50 cursor-not-allowed' : ''}`}
                      >
                          Export Plan to PNG
                      </button>
                 </div>
 
+                {/* Year Plans - Pass necessary props */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     {[9, 10, 11, 12].map(year => (
                         <YearPlan
                             key={year}
                             year={year}
                             selectedCoursesInYear={selectedCourses[year] || []}
-                            allCourses={coursesData}
-                            middleSchoolCredits={middleSchoolCredits} // Pass MS credits down
-                            selectedCoursesByYear={selectedCourses} // Pass full HS plan for context
+                            allCourses={allCoursesData} // Pass loaded data
+                            middleSchoolCredits={middleSchoolCredits}
+                            selectedCoursesByYear={selectedCourses}
                             addCourse={addCourse}
                             removeCourse={removeCourse}
                             setWarnings={setWarnings}
+                            findCourseById={findCourseById} // Pass helper
+                            checkPrerequisites={checkPrerequisites} // Pass helper
                         />
                     ))}
                 </div>
 
+                {/* Progress Trackers - Pass necessary props */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-1">
-                        {/* Pass calculated display data */}
                         <GraduationProgress credits={displayData.credits} plan={displayData.planDetails} />
                     </div>
                     <div className="md:col-span-1">
                         <EndorsementTracker selectedCoursesByYear={selectedCourses} middleSchoolCredits={middleSchoolCredits} planType={selectedPlanType} />
                     </div>
                     <div className="md:col-span-1">
-                        <DLAGuidance selectedCoursesByYear={selectedCourses} middleSchoolCredits={middleSchoolCredits} planType={selectedPlanType} />
+                        <DLAGuidance
+                            selectedCoursesByYear={selectedCourses}
+                            middleSchoolCredits={middleSchoolCredits}
+                            planType={selectedPlanType}
+                            findCourseById={findCourseById} // Pass helper
+                        />
                     </div>
-
                 </div>
             </div> {/* End of plan-export-content */}
 
-
+             {/* Warnings Message Box */}
              <MessageBox messages={warnings} clearMessages={clearWarnings} />
 
              <footer className="text-center mt-8 text-xs text-gray-500">
-                 Data based on RRISD 2025-2026 Catalog (Representative Sample). Consult official sources.
+                 Data loaded dynamically. Consult official RRISD sources.
              </footer>
         </div>
     );
 }
 
-export default App; // Make sure to export App as default
+// Render the App component to the DOM
+const container = document.getElementById('root');
+const root = ReactDOM.createRoot(container);
+root.render(<App />);
+
+    </script>
+</body>
+</html>
