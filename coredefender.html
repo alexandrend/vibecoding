@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Defender MVP</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace; /* Retro font */
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        #game-container {
+            border: 2px solid #0f0; /* Green border like old monitors */
+            position: relative; /* For positioning HUD */
+            background-color: #000;
+            box-shadow: 0 0 15px #0f0; /* Glow effect */
+             /* Ensure canvas size matches CSS */
+            width: 600px;
+            height: 400px;
+        }
+
+        #game-canvas {
+            display: block; /* Remove extra space below canvas */
+            width: 100%;
+            height: 100%;
+            /* Optional: Improve sprite rendering on some browsers */
+            /* image-rendering: pixelated; */
+            /* image-rendering: crisp-edges; */
+        }
+
+        #management-screen {
+            display: none; /* Hidden initially */
+            width: 600px;
+            height: 400px;
+            background-color: #000;
+            border: 1px solid #0f0;
+            padding: 20px;
+            box-sizing: border-box;
+            color: #0f0; /* Green text */
+            font-size: 16px;
+            line-height: 1.6;
+            position: absolute; /* Position over canvas */
+            top: 0;
+            left: 0;
+        }
+
+        #management-screen h2 {
+            text-align: center;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: flicker 1.5s infinite alternate; /* Flicker effect */
+        }
+
+        @keyframes flicker {
+          0%, 18%, 22%, 25%, 53%, 57%, 100% {
+            text-shadow:
+              0 0 4px #0f0,
+              0 0 11px #0f0,
+              0 0 19px #0f0,
+              0 0 40px #0f0,
+              0 0 80px #0f0,
+              0 0 90px #0f0,
+              0 0 100px #0f0,
+              0 0 150px #0f0;
+            opacity: 1;
+          }
+          20%, 24%, 55% {
+            text-shadow: none;
+            opacity: 0.8;
+          }
+        }
+
+
+        #management-screen label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        #management-screen input[type="range"] {
+            width: 80%;
+            margin-bottom: 15px;
+            accent-color: #0f0; /* Make slider green */
+            outline: none; /* Remove default focus outline */
+        }
+
+        #management-screen .power-value {
+            font-weight: bold;
+            min-width: 30px; /* Ensure alignment */
+            display: inline-block;
+        }
+
+        #management-screen button {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 20px;
+            background-color: #0f0;
+            color: #000;
+            border: none;
+            font-family: inherit;
+            font-size: 16px;
+            cursor: pointer; /* Keep pointer for mouse users */
+            text-transform: uppercase;
+            transition: background-color 0.2s, color 0.2s;
+            outline: none; /* Remove default focus outline */
+        }
+
+        #management-screen button:hover {
+            background-color: #000;
+            color: #0f0;
+            outline: 1px solid #0f0;
+        }
+
+        /* Style for the currently focused control in Management Screen */
+        .focused-control {
+             outline: 2px solid #ff0 !important; /* Yellow outline for focus */
+             box-shadow: 0 0 10px #ff0;
+        }
+
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            color: #0f0; /* Green HUD text */
+            font-size: 18px;
+            pointer-events: none; /* Allow clicks through HUD */
+            text-shadow: 0 0 5px #0f0;
+            z-index: 10; /* Ensure HUD is above canvas */
+        }
+
+         /* Blinking cursor effect for management screen */
+        .cursor::after {
+            content: '_';
+            opacity: 0;
+            animation: blink 1s step-start infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Core Defender <span class="cursor"></span></h1>
+    <div id="game-container">
+        <div id="hud">
+            <span id="score">SCORE: 0</span>
+            <span id="lives">LIVES: 3</span>
+            <span id="wave">WAVE: 1</span>
+        </div>
+        <canvas id="game-canvas" width="600" height="400"></canvas>
+        <div id="management-screen">
+            <h2>SYSTEM MANAGEMENT <span class="cursor"></span></h2>
+            <p>ALLOCATE REACTOR POWER (TOTAL: 100%)</p>
+            <div>
+                <label for="weapon-power">WEAPONS:</label>
+                <input type="range" id="weapon-power" name="weapon-power" min="0" max="100" value="50">
+                <span class="power-value" id="weapon-power-value">50%</span>
+            </div>
+            <div>
+                <label for="shield-power">SHIELDS:</label>
+                 <input type="range" id="shield-power" name="shield-power" min="0" max="100" value="50">
+                 <span class="power-value" id="shield-power-value">50%</span>
+            </div>
+            <p id="power-warning" style="color: #f00; display: none;">WARNING: Total power exceeds 100%!</p>
+             <button id="start-wave-button">EXEC_WAVE.BAT</button>
+            <p style="margin-top: 30px;">// Use Arrow Keys to navigate & adjust.</p>
+            <p>// Press Enter to start wave.</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', (event) => {
+
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const managementScreen = document.getElementById('management-screen');
+            const startWaveButton = document.getElementById('start-wave-button');
+            const weaponPowerSlider = document.getElementById('weapon-power');
+            const shieldPowerSlider = document.getElementById('shield-power');
+            const weaponPowerValue = document.getElementById('weapon-power-value');
+            const shieldPowerValue = document.getElementById('shield-power-value');
+            const powerWarning = document.getElementById('power-warning');
+            const scoreDisplay = document.getElementById('score');
+            const livesDisplay = document.getElementById('lives');
+            const waveDisplay = document.getElementById('wave');
+
+            // --- Game State ---
+            let gameState = 'MANAGEMENT'; let score = 0; let lives = 3; let wave = 1;
+            let player; let bullets = []; let enemies = []; let keys = {}; let capturedPlayer = null;
+            let particles = [];
+
+            // --- Power Allocation ---
+            let weaponPower = 50; let shieldPower = 50;
+
+            // --- Management Screen Focus ---
+            const focusableControls = [weaponPowerSlider, shieldPowerSlider, startWaveButton];
+            let focusedControlIndex = 0;
+
+            // --- Game Settings ---
+            // Use these for collision box AND drawing reference now
+            const playerWidth = 30; const playerHeight = 20;
+            const enemyWidth = 30; const enemyHeight = 20;
+            const playerSpeed = 5;
+            const bulletWidth = 4; const bulletHeight = 8; const bulletRadius = 3;
+            const bulletSpeedBase = 5;
+            const fireRateCooldownBase = 30;
+            const enemySpacing = 40; // Reset spacing
+            const sliderStep = 5;
+
+            // --- Difficulty Settings ---
+            const enemySpeedBase = 0.5; const enemySpeedIncrease = 0.1; const maxEnemySpeed = 3;
+            const startEnemyRows = 1; const startEnemiesPerRow = 4; const maxEnemyRows = 3; const maxEnemiesPerRow = 8;
+            const rowsIncreaseInterval = 2; const perRowIncreaseInterval = 1;
+
+            // --- Current Wave Difficulty ---
+            let currentEnemySpeed = enemySpeedBase; let currentEnemyRows = startEnemyRows; let currentEnemiesPerRow = startEnemiesPerRow;
+
+            // --- Enemy Specific Settings ---
+            const DIVE_TRIGGER_Y = 100; const DIVE_PREP_TIME = 45; const DIVE_SPEED_FACTOR = 2.5; const DIVE_HORIZONTAL_SPEED = 2;
+            const TRACTOR_TRIGGER_Y = 100; const TRACTOR_PREP_TIME = 60; const TRACTOR_BEAM_SPEED = 3;
+            const TRACTOR_BEAM_MAX_LENGTH = 300; const TRACTOR_BEAM_WIDTH = 30; const CAPTURE_RETURN_SPEED = 2;
+
+            // --- Particle Settings ---
+            const PARTICLE_COUNT = 8; const PARTICLE_SPEED_RANGE = { min: 1, max: 3 };
+            const PARTICLE_LIFE_RANGE = { min: 20, max: 40 }; const PARTICLE_SIZE_RANGE = { min: 2, max: 4 };
+
+            // --- Audio Setup ---
+            let audioInitialized = false;
+            let laserSynth, explosionSynth, damageSynth, uiSynth, specialSynth;
+            let bassSynth, bassSequence;
+
+            function initializeAudio() { /* ... (Audio init code remains the same) ... */
+                if (typeof Tone === 'undefined') { console.error("Tone.js is not loaded yet!"); return; }
+                if (audioInitialized) return;
+                Tone.start().then(() => {
+                    console.log("Audio Context Started");
+                    laserSynth = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }, volume: -12 }).toDestination();
+                    explosionSynth = new Tone.MembraneSynth({ pitchDecay: 0.05, octaves: 5, envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 0.4 }, volume: -8 }).toDestination();
+                    uiSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.05, sustain: 0, release: 0.1 }, volume: -18 }).toDestination();
+                    specialSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 }, volume: -10 }).toDestination();
+                    damageSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'square' }, envelope: { attack: 0.02, decay: 0.3, sustain: 0, release: 0.1 }, volume: -10 }).toDestination();
+                    bassSynth = new Tone.MonoSynth({ oscillator: { type: "square" }, filter: { Q: 2, type: "lowpass", rolloff: -12 }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.4, release: 0.5 }, filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.8, release: 0.5, baseFrequency: 100, octaves: 4 }, volume: -18 }).toDestination();
+                    const bassNotes = ["C2", null, "G2", null, "Eb2", null, "G2", "Bb1"];
+                    bassSequence = new Tone.Sequence((time, note) => { if (note) { bassSynth.triggerAttackRelease(note, "8n", time); } }, bassNotes, "8n");
+                    bassSequence.loop = true; bassSequence.start(0);
+                    Tone.Transport.bpm.value = 100;
+                    audioInitialized = true;
+                    console.log("Audio Initialized Successfully");
+                }).catch(e => { console.error("Error starting Tone.js Audio Context:", e); });
+            }
+
+
+            // --- Particle Class ---
+            class Particle { /* ... (Particle class code remains the same) ... */
+                constructor(x, y, color) { this.x = x; this.y = y; const angle = Math.random() * Math.PI * 2; const speed = Math.random() * (PARTICLE_SPEED_RANGE.max - PARTICLE_SPEED_RANGE.min) + PARTICLE_SPEED_RANGE.min; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed; this.size = Math.random() * (PARTICLE_SIZE_RANGE.max - PARTICLE_SIZE_RANGE.min) + PARTICLE_SIZE_RANGE.min; this.maxLife = Math.random() * (PARTICLE_LIFE_RANGE.max - PARTICLE_LIFE_RANGE.min) + PARTICLE_LIFE_RANGE.min; this.life = this.maxLife; this.color = (Math.random() < 0.1) ? '#fff' : (Math.random() < 0.1 ? '#ff0' : color); }
+                update() { this.x += this.vx; this.y += this.vy; this.life--; }
+                draw() { ctx.globalAlpha = Math.max(0, this.life / this.maxLife); ctx.fillStyle = this.color; ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size); }
+            }
+
+             // --- Function to create explosions ---
+             function createExplosion(x, y, color) { /* ... (createExplosion code remains the same) ... */
+                for (let i = 0; i < PARTICLE_COUNT; i++) { particles.push(new Particle(x, y, color)); }
+            }
+
+
+            // --- Player Class ---
+            class Player {
+                constructor(x, y, width, height, color) { this.x = x; this.y = y; this.width = width; this.height = height; this.color = color; this.fireCooldown = 0; this.isCaptured = false; this.updateMaxHits(); this.currentHits = this.maxHits; }
+                updateMaxHits() { this.maxHits = 1 + Math.floor(shieldPower / 50); this.currentHits = Math.min(this.currentHits, this.maxHits); }
+                draw() {
+                    // --- Reverted Player Drawing ---
+                    const centerX = this.x + this.width / 2;
+                    const centerY = this.y + this.height / 2;
+
+                    // Draw shield first
+                    if (!this.isCaptured) {
+                        const shieldOpacityFactor = this.maxHits > 0 ? (this.currentHits / this.maxHits) : 0;
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, this.width * 0.75, 0, Math.PI * 2); // Circular shield
+                        ctx.fillStyle = `rgba(0, 255, 255, ${0.15 + 0.3 * shieldOpacityFactor})`; // Cyan shield
+                        ctx.fill();
+                        ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + 0.5 * shieldOpacityFactor})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+
+                    // Draw ship body
+                    ctx.fillStyle = '#0f0'; // Main color green
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, this.y); // Nose
+                    ctx.lineTo(this.x + this.width, this.y + this.height * 0.8); // Wingtip right
+                    ctx.lineTo(centerX + this.width * 0.2, this.y + this.height * 0.7); // Inner wing right
+                    ctx.lineTo(centerX + this.width * 0.2, this.y + this.height); // Nozzle right base
+                    ctx.lineTo(centerX - this.width * 0.2, this.y + this.height); // Nozzle left base
+                    ctx.lineTo(centerX - this.width * 0.2, this.y + this.height * 0.7); // Inner wing left
+                    ctx.lineTo(this.x, this.y + this.height * 0.8); // Wingtip left
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Cockpit detail
+                    ctx.fillStyle = '#fff'; // White cockpit
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, this.y + this.height * 0.1);
+                    ctx.lineTo(centerX + this.width * 0.1, this.y + this.height * 0.3);
+                    ctx.lineTo(centerX, this.y + this.height * 0.4);
+                    ctx.lineTo(centerX - this.width * 0.1, this.y + this.height * 0.3);
+                    ctx.closePath();
+                    ctx.fill();
+
+                     // Engine Nozzles detail
+                    ctx.fillStyle = '#aaa'; // Grey nozzles
+                    ctx.fillRect(centerX + this.width * 0.2 - 2, this.y + this.height - 2, 4, 4); // Right nozzle ish
+                    ctx.fillRect(centerX - this.width * 0.2 - 2, this.y + this.height - 2, 4, 4); // Left nozzle ish
+                    // --- End Reverted Player Drawing ---
+                }
+                update() { if (this.isCaptured) return; if (keys['ArrowLeft'] && this.x > 0) this.x -= playerSpeed; if (keys['ArrowRight'] && this.x < canvas.width - this.width) this.x += playerSpeed; if (this.fireCooldown > 0) this.fireCooldown--; if (keys[' '] && this.fireCooldown === 0) { this.shoot(); const effectiveCooldown = fireRateCooldownBase / (1 + (weaponPower / 50)); this.fireCooldown = Math.max(5, Math.floor(effectiveCooldown)); } }
+                shoot() { const effectiveBulletSpeed = bulletSpeedBase * (1 + (weaponPower / 100)); bullets.push(new Bullet(this.x + this.width / 2, this.y, bulletWidth, bulletHeight, '#ff0', effectiveBulletSpeed)); if (audioInitialized) laserSynth.triggerAttackRelease("G5", "32n", Tone.now()); }
+                hit() { if (this.isCaptured) return; if (audioInitialized) damageSynth.triggerAttackRelease("C3", "8n", Tone.now()); this.currentHits--; if (this.currentHits <= 0) { handlePlayerDeath(); } }
+            }
+
+            // --- Bullet Class ---
+            class Bullet { /* ... (Bullet class code remains the same - uses procedural drawing) ... */
+                constructor(x, y, width, height, color, speed) { this.x = x; this.y = y; this.width = width; this.height = height; this.radius = bulletRadius; this.color = color; this.speed = speed; }
+                draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); }
+                update() { this.y -= this.speed; }
+            }
+
+            // --- Enemy Class ---
+            class Enemy {
+                constructor(x, y, width, height, color, type = 'STANDARD') { this.x = x; this.y = y; this.width = width; this.height = height; this.baseColor = color; this.color = color; this.type = type; this.state = 'FORMATION'; this.diveTimer = 0; this.diveTargetX = 0; this.tractorTimer = 0; this.isTractorBeamActive = false; this.tractorBeamLength = 0; this.capturedShip = null; }
+                draw() {
+                    // --- Reverted Enemy Drawing ---
+                    const centerX = this.x + this.width / 2;
+                    const centerY = this.y + this.height / 2;
+
+                    // Use current color (might be base, or flashing color)
+                    ctx.fillStyle = this.color;
+
+                    if (this.type === 'STANDARD') {
+                        // Oval body
+                        ctx.beginPath();
+                        ctx.ellipse(centerX, centerY, this.width * 0.4, this.height * 0.5, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Side pods
+                        ctx.fillRect(this.x, centerY - 3, 6, 6); // Left pod
+                        ctx.fillRect(this.x + this.width - 6, centerY - 3, 6, 6); // Right pod
+                        // Central eye
+                        ctx.fillStyle = '#fff'; // White eye
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY - this.height * 0.1, 2, 0, Math.PI * 2);
+                        ctx.fill();
+
+                    } else { // DIVER type
+                         // More triangular / arrowhead shape
+                         ctx.beginPath();
+                         ctx.moveTo(centerX, this.y); // Front point
+                         ctx.lineTo(this.x + this.width, centerY); // Right mid point
+                         ctx.lineTo(centerX + this.width * 0.2, this.y + this.height); // Bottom right indent
+                         ctx.lineTo(centerX - this.width * 0.2, this.y + this.height); // Bottom left indent
+                         ctx.lineTo(this.x, centerY); // Left mid point
+                         ctx.closePath();
+                         ctx.fill();
+                         // Central eye
+                         ctx.fillStyle = '#ff0'; // Yellow eye for divers
+                         ctx.beginPath();
+                         ctx.arc(centerX, centerY + this.height * 0.1, 2.5, 0, Math.PI * 2);
+                         ctx.fill();
+                    }
+                    // --- End Reverted Enemy Drawing ---
+
+                    // Draw tractor beam if active
+                    if (this.isTractorBeamActive) { ctx.beginPath(); ctx.moveTo(this.x, this.y + this.height); ctx.lineTo(this.x + this.width, this.y + this.height); ctx.lineTo(centerX + TRACTOR_BEAM_WIDTH / 2, this.y + this.height + this.tractorBeamLength); ctx.lineTo(centerX - TRACTOR_BEAM_WIDTH / 2, this.y + this.height + this.tractorBeamLength); ctx.closePath(); ctx.fillStyle = 'rgba(0, 150, 255, 0.3)'; ctx.fill(); ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)'; ctx.stroke(); }
+                    // Draw captured ship if any
+                    if (this.capturedShip) { this.capturedShip.draw(); }
+                }
+                update() {
+                    let originalColor = this.baseColor; // Store base color
+                    if (this.type === 'STANDARD') { this.y += currentEnemySpeed; }
+                    else if (this.type === 'DIVER') {
+                        switch (this.state) {
+                            case 'FORMATION': this.y += currentEnemySpeed; if (this.y >= TRACTOR_TRIGGER_Y) { this.state = 'PRE_TRACTOR'; this.tractorTimer = TRACTOR_PREP_TIME; this.color = '#00f'; if (audioInitialized) specialSynth.triggerAttackRelease("A4", "16n", Tone.now()); } break; // Flash Blue
+                            case 'PRE_TRACTOR': this.tractorTimer--; this.x += Math.sin(this.tractorTimer * 0.6) * 0.6; if (this.tractorTimer <= 0) { this.state = 'TRACTOR_ACTIVE'; this.color = originalColor; this.isTractorBeamActive = true; this.tractorBeamLength = 0; } break; // Revert color
+                            case 'TRACTOR_ACTIVE': this.tractorBeamLength += TRACTOR_BEAM_SPEED; if (this.tractorBeamLength >= TRACTOR_BEAM_MAX_LENGTH) { this.isTractorBeamActive = false; this.state = 'PRE_DIVE'; this.diveTimer = DIVE_PREP_TIME; this.color = '#ff0'; if (audioInitialized) specialSynth.triggerAttackRelease("G4", "16n", Tone.now()); } break; // Flash Yellow
+                            case 'CAPTURING': this.y -= CAPTURE_RETURN_SPEED; if (this.capturedShip) { this.capturedShip.x = this.x + this.width / 2 - this.capturedShip.width / 2; this.capturedShip.y = this.y + this.height + 5; } if (this.y + this.height < 0) { this.remove = true; if (this.capturedShip === capturedPlayer) { capturedPlayer = null; } } break;
+                            case 'PRE_DIVE': this.diveTimer--; this.x += Math.sin(this.diveTimer * 0.5) * 0.5; if (this.diveTimer <= 0) { this.state = 'DIVING'; this.color = originalColor; if (player) this.diveTargetX = player.x + player.width / 2; else this.diveTargetX = this.x; } break; // Revert color
+                            case 'DIVING': this.y += currentEnemySpeed * DIVE_SPEED_FACTOR; if (Math.abs(this.x - this.diveTargetX) > DIVE_HORIZONTAL_SPEED) { this.x += Math.sign(this.diveTargetX - this.x) * DIVE_HORIZONTAL_SPEED; } break;
+                        }
+                    }
+                    // Ensure color resets if not in a flashing state
+                    if (this.state !== 'PRE_TRACTOR' && this.state !== 'PRE_DIVE') { this.color = this.baseColor; }
+
+                    if (this.y > canvas.height && this.state !== 'CAPTURING') { this.remove = true; }
+                    else if (this.type === 'STANDARD' && this.y + this.height > canvas.height && gameState === 'ACTION') { lives = 0; gameState = 'GAMEOVER'; }
+                }
+            }
+
+            // --- Game Functions ---
+            function calculateDifficulty() { /* ... (remains the same) ... */ currentEnemySpeed = Math.min(maxEnemySpeed, enemySpeedBase + (wave - 1) * enemySpeedIncrease); currentEnemyRows = Math.min(maxEnemyRows, startEnemyRows + Math.floor((wave - 1) / rowsIncreaseInterval)); currentEnemiesPerRow = Math.min(maxEnemiesPerRow, startEnemiesPerRow + Math.floor((wave - 1) / perRowIncreaseInterval)); }
+            function spawnEnemies() { enemies = []; const startX = (canvas.width - (currentEnemiesPerRow * enemySpacing)) / 2 + enemySpacing/2; const startY = 50; for (let r = 0; r < currentEnemyRows; r++) { for (let c = 0; c < currentEnemiesPerRow; c++) { const x = startX + c * enemySpacing; const y = startY + r * enemySpacing; let t = 'STANDARD', col = `hsl(${270+r*15},100%,50%)`; if(r===currentEnemyRows-1){t='DIVER';col='#f00';} enemies.push(new Enemy(x,y,enemyWidth,enemyHeight,col,t)); } } } // Use enemyWidth/Height
+
+            function handlePlayerDeath() { /* ... (remains the same) ... */ lives--; updateHUD(); if (lives > 0) { player = new Player(canvas.width/2 - playerWidth/2, canvas.height - 40 - playerHeight/2, playerWidth, playerHeight, '#0f0'); player.updateMaxHits(); player.currentHits = player.maxHits; } else { if (audioInitialized) specialSynth.triggerAttackRelease("C3", "2n", Tone.now()); gameState = 'GAMEOVER'; if (audioInitialized && Tone.Transport.state === 'started') { Tone.Transport.stop(); Tone.Transport.cancel(); console.log("Music stopped (Game Over)"); } player = null; } }
+            function handlePlayerCapture(capturingEnemy) { /* ... (remains the same) ... */ if (!player || player.isCaptured) return; console.log("Player captured!"); if (audioInitialized) damageSynth.triggerAttackRelease("E3", "4n", Tone.now()); player.isCaptured = true; capturedPlayer = player; capturingEnemy.capturedShip = player; capturingEnemy.state = 'CAPTURING'; capturingEnemy.isTractorBeamActive = false; handlePlayerDeath(); }
+
+            function updateGameObjects() { /* ... (particle update loop remains the same) ... */ if (player && !player.isCaptured) player.update(); for (let i = bullets.length - 1; i >= 0; i--) { bullets[i].update(); if (bullets[i].y < 0) bullets.splice(i, 1); } for (let i = enemies.length - 1; i >= 0; i--) { enemies[i].update(); if(enemies[i].state === 'CAPTURING' && enemies[i].capturedShip) { enemies[i].capturedShip.x = enemies[i].x + enemies[i].width / 2 - enemies[i].capturedShip.width / 2; enemies[i].capturedShip.y = enemies[i].y + enemies[i].height + 5; } if (enemies[i].remove) { if(enemies[i].state === 'CAPTURING' && enemies[i].capturedShip === capturedPlayer) { capturedPlayer = null; } enemies.splice(i, 1); } } for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].life <= 0) { particles.splice(i, 1); } } checkCollisions(); if (enemies.length === 0 && gameState === 'ACTION') { wave++; gameState = 'MANAGEMENT'; showManagementScreen(); } }
+            function drawGameObjects() { /* ... (particle drawing loop remains the same) ... */ ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height); if (player) player.draw(); bullets.forEach(bullet => bullet.draw()); enemies.forEach(enemy => enemy.draw()); ctx.save(); particles.forEach(particle => particle.draw()); ctx.restore(); }
+            function checkCollisions() { /* ... (collision logic remains the same) ... */
+                if (!player && !capturedPlayer) return;
+                for (let i = bullets.length - 1; i >= 0; i--) { for (let j = enemies.length - 1; j >= 0; j--) { if (!bullets[i] || !enemies[j]) continue; const bulletX = bullets[i].x; const bulletY = bullets[i].y; const bulletRadiusCheck = bullets[i].radius; if (bulletX + bulletRadiusCheck > enemies[j].x && bulletX - bulletRadiusCheck < enemies[j].x + enemies[j].width && bulletY + bulletRadiusCheck > enemies[j].y && bulletY - bulletRadiusCheck < enemies[j].y + enemies[j].height) { createExplosion(enemies[j].x + enemies[j].width / 2, enemies[j].y + enemies[j].height / 2, enemies[j].baseColor); if (enemies[j].state === 'CAPTURING' && enemies[j].capturedShip) { console.log("Captured ship rescued!"); if(enemies[j].capturedShip === capturedPlayer) { capturedPlayer = null; } enemies[j].capturedShip = null; if (audioInitialized) specialSynth.triggerAttackRelease("G5", "8n", Tone.now()); } if (audioInitialized) explosionSynth.triggerAttackRelease("8n", Tone.now()); enemies.splice(j, 1); bullets.splice(i, 1); score += 10; updateHUD(); break; } } }
+                if (player && !player.isCaptured) { for (let i = enemies.length - 1; i >= 0; i--) { if (!enemies[i] || enemies[i].state === 'CAPTURING') continue; if (player.x < enemies[i].x + enemies[i].width && player.x + player.width > enemies[i].x && player.y < enemies[i].y + enemies[i].height && player.y + player.height > enemies[i].y) { if (enemies[i].state !== 'CAPTURING') { createExplosion(enemies[i].x + enemies[i].width / 2, enemies[i].y + enemies[i].height / 2, enemies[i].baseColor); enemies.splice(i, 1); player.hit(); } } } }
+                if (player && !player.isCaptured) { for (let i = enemies.length - 1; i >= 0; i--) { if (enemies[i].isTractorBeamActive) { const enemy = enemies[i]; const beamBaseY = enemy.y + enemy.height; const beamTipY = beamBaseY + enemy.tractorBeamLength; const beamMidX = enemy.x + enemy.width / 2; const beamCurrentWidth = TRACTOR_BEAM_WIDTH; const beamTipXLeft = beamMidX - beamCurrentWidth / 2; const beamTipXRight = beamMidX + beamCurrentWidth / 2; if (player.x + player.width > beamTipXLeft && player.x < beamTipXRight && player.y + player.height > beamBaseY && player.y < beamTipY) { handlePlayerCapture(enemy); break; } } } }
+             }
+            function updateHUD() { /* ... (remains the same) ... */ scoreDisplay.textContent = `SCORE: ${score}`; livesDisplay.textContent = `LIVES: ${lives}`; waveDisplay.textContent = `WAVE: ${wave}`; }
+
+            // --- Management Screen Specific Functions ---
+            function updateFocusVisuals() { /* ... (remains the same) ... */ focusableControls.forEach((control, index) => { if (index === focusedControlIndex) control.classList.add('focused-control'); else control.classList.remove('focused-control'); }); }
+            function showManagementScreen() { /* ... (remains the same) ... */ gameState = 'MANAGEMENT'; canvas.style.display = 'none'; managementScreen.style.display = 'block'; updateHUD(); weaponPowerSlider.value = weaponPower; shieldPowerSlider.value = shieldPower; weaponPowerValue.textContent = `${weaponPower}%`; shieldPowerValue.textContent = `${shieldPower}%`; checkPowerAllocation(); focusedControlIndex = 0; updateFocusVisuals(); if (audioInitialized && Tone.Transport.state === 'started') { Tone.Transport.stop(); Tone.Transport.cancel(); console.log("Music stopped (Management)"); } }
+            function checkPowerAllocation() { /* ... (remains the same) ... */ const totalPower = parseInt(weaponPowerSlider.value) + parseInt(shieldPowerSlider.value); const isOverLimit = totalPower > 100; powerWarning.style.display = isOverLimit ? 'block' : 'none'; startWaveButton.disabled = isOverLimit; startWaveButton.style.backgroundColor = isOverLimit ? '#555' : '#0f0'; startWaveButton.style.cursor = isOverLimit ? 'not-allowed' : 'pointer'; weaponPower = parseInt(weaponPowerSlider.value); shieldPower = parseInt(shieldPowerSlider.value); weaponPowerValue.textContent = `${weaponPower}%`; shieldPowerValue.textContent = `${shieldPower}%`; return !isOverLimit; }
+
+            // --- Game Start and Over ---
+            function startGame() {
+                 // No sprite load check needed now
+                 if (!audioInitialized && typeof Tone !== 'undefined') { initializeAudio(); }
+                 else if (typeof Tone === 'undefined') { console.warn("Tone.js not ready yet, cannot initialize audio."); }
+
+                canvas.style.display = 'block'; managementScreen.style.display = 'none'; gameState = 'ACTION'; calculateDifficulty();
+                if (lives <= 0) { capturedPlayer = null; }
+                // Use original width/height constants for player spawn
+                if (!player || lives <= 0) { score = 0; lives = 3; wave = 1; calculateDifficulty(); player = new Player(canvas.width/2 - playerWidth/2, canvas.height - 40 - playerHeight/2, playerWidth, playerHeight, '#0f0'); }
+                else { player.isCaptured = false; player.x = canvas.width/2 - playerWidth/2; player.y = canvas.height - 40 - playerHeight/2; }
+                player.updateMaxHits(); player.currentHits = player.maxHits; bullets = []; particles = []; enemies = []; spawnEnemies(); updateHUD();
+
+                if (audioInitialized && Tone.Transport.state !== 'started') { Tone.Transport.start(); console.log("Music started"); }
+                if (audioInitialized) { const now = Tone.now(); specialSynth.triggerAttackRelease("C4", "8n", now + 0.1); specialSynth.triggerAttackRelease("E4", "8n", now + 0.2); specialSynth.triggerAttackRelease("G4", "8n", now + 0.3); }
+                gameLoop();
+            }
+            function gameOver() { /* ... (remains the same) ... */ ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#f00'; ctx.font = '40px "Courier New", Courier, monospace'; ctx.textAlign = 'center'; ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 40); ctx.font = '20px "Courier New", Courier, monospace'; ctx.fillText(`FINAL SCORE: ${score}`, canvas.width / 2, canvas.height / 2 + 0); ctx.fillStyle = '#ff0'; ctx.fillText('Press Enter to Play Again', canvas.width / 2, canvas.height / 2 + 40); if (audioInitialized && Tone.Transport.state === 'started') { Tone.Transport.stop(); Tone.Transport.cancel(); console.log("Music stopped (Game Over - Failsafe)"); } }
+
+            // --- Event Listeners ---
+            weaponPowerSlider.addEventListener('input', () => { focusedControlIndex = 0; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); });
+            shieldPowerSlider.addEventListener('input', () => { focusedControlIndex = 1; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); });
+            startWaveButton.addEventListener('click', () => { if (checkPowerAllocation()) startGame(); });
+
+            window.addEventListener('keydown', (e) => { /* ... (remains the same) ... */ if (player && !player.isCaptured) { keys[e.key] = true; } else { keys['ArrowLeft'] = false; keys['ArrowRight'] = false; keys[' '] = false; } if (gameState === 'ACTION') { if (e.key === ' ') e.preventDefault(); } else if (gameState === 'MANAGEMENT') { e.preventDefault(); let handled = false; let playUISound = false; switch (e.key) { case 'ArrowUp': focusedControlIndex = (focusedControlIndex - 1 + focusableControls.length) % focusableControls.length; handled = true; playUISound = true; break; case 'ArrowDown': focusedControlIndex = (focusedControlIndex + 1) % focusableControls.length; handled = true; playUISound = true; break; case 'ArrowLeft': if (focusedControlIndex < 2) { const slider = focusableControls[focusedControlIndex]; slider.value = Math.max(parseInt(slider.min), parseInt(slider.value) - sliderStep); checkPowerAllocation(); handled = true; playUISound = true; } break; case 'ArrowRight': if (focusedControlIndex < 2) { const slider = focusableControls[focusedControlIndex]; slider.value = Math.min(parseInt(slider.max), parseInt(slider.value) + sliderStep); checkPowerAllocation(); handled = true; playUISound = true; } break; case 'Enter': if (focusedControlIndex === 2 && checkPowerAllocation()) { startGame(); handled = true; } break; } if (handled && playUISound && audioInitialized) { uiSynth.triggerAttackRelease(focusedControlIndex === 2 ? "C6" : "A5", "32n", Tone.now()); } if (handled && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { updateFocusVisuals(); } } else if (gameState === 'GAMEOVER') { if (e.key === 'Enter') { e.preventDefault(); wave = 1; showManagementScreen(); } } });
+            window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+            // --- Game Loop ---
+            function gameLoop() { if (gameState === 'ACTION') { updateGameObjects(); drawGameObjects(); if (gameState === 'ACTION') requestAnimationFrame(gameLoop); else if (gameState === 'GAMEOVER') gameOver(); } else if (gameState === 'GAMEOVER') { gameOver(); } }
+
+            // --- Initial Setup ---
+             showManagementScreen(); // Call directly now, no need to wait for sprites
+
+        }); // End of DOMContentLoaded listener
+    </script>
+</body>
+</html>
