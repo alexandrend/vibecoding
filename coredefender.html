@@ -2,21 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Core Defender - Touch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Core Defender - Full Screen</title>
     <style>
+        html, body {
+            height: 100%; /* Make HTML and Body take full height */
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars on body */
+        }
+
         body {
             background-color: #111;
             color: #eee;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* Stack elements vertically */
             align-items: center;
-            justify-content: center; /* Center vertically */
-            min-height: 100vh; /* Ensure full height */
-            margin: 0;
+            /* justify-content: center; Removed to allow top alignment */
             font-family: 'Courier New', Courier, monospace; /* Retro font */
-            overflow: hidden; /* Prevent scrollbars */
-            /* Prevent text selection on touch controls */
+            /* Prevent text selection */
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -26,52 +29,58 @@
         }
 
         h1 {
-             margin-bottom: 10px; /* Add some space below title */
+             margin-top: 10px; /* Space above title */
+             margin-bottom: 5px; /* Less space below title */
+             font-size: clamp(18px, 4vw, 24px); /* Responsive title size */
+             flex-shrink: 0; /* Prevent title from shrinking */
         }
 
         #game-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%; /* Take full width */
+            flex-grow: 1; /* Allow wrapper to take remaining vertical space */
+            overflow: hidden; /* Prevent internal overflow */
         }
 
-
         #game-container {
-            border: 2px solid #0f0; /* Green border like old monitors */
-            position: relative; /* For positioning HUD and Management Screen */
+            border: 2px solid #0f0;
+            position: relative;
             background-color: #000;
-            box-shadow: 0 0 15px #0f0; /* Glow effect */
-            /* Ensure canvas size matches CSS */
-            width: 600px;
-            height: 400px;
-            max-width: 95vw; /* Limit width on smaller screens */
-            /* Calculate height based on aspect ratio */
-            aspect-ratio: 600 / 400;
-            height: auto; /* Let aspect ratio determine height */
+            box-shadow: 0 0 15px #0f0;
+            width: 100%; /* Take full width of wrapper */
+            flex-grow: 1; /* Allow container to take up vertical space */
+            /* Removed fixed width/height/aspect-ratio */
+            display: flex; /* Needed for canvas to size correctly */
+            overflow: hidden; /* Hide anything spilling out */
         }
 
         #game-canvas {
-            display: block; /* Remove extra space below canvas */
-            width: 100%;
+            display: block;
+            width: 100%; /* Canvas fills container */
             height: 100%;
+            image-rendering: pixelated; /* Optional: Sharper pixels when scaling */
+            image-rendering: crisp-edges; /* Broader support */
         }
 
         #management-screen {
-            display: none; /* Hidden initially */
-            width: 100%; /* Take full width of container */
-            height: 100%; /* Take full height of container */
-            background-color: rgba(0, 0, 0, 0.95); /* Slightly transparent black */
+            /* Style remains largely the same, positioned absolutely over game-container */
+            display: none;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
             border: 1px solid #0f0;
             padding: 15px;
             box-sizing: border-box;
-            color: #0f0; /* Green text */
-            font-size: 14px;
+            color: #0f0;
+            font-size: clamp(12px, 2vw, 14px); /* Slightly responsive font */
             line-height: 1.5;
-            position: absolute; /* Position over canvas */
+            position: absolute;
             top: 0;
             left: 0;
-            overflow-y: auto; /* Add scroll if needed */
-            z-index: 20; /* Ensure it's above canvas and HUD */
+            overflow-y: auto;
+            z-index: 20;
         }
 
         #management-screen h2 {
@@ -80,14 +89,14 @@
             margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            animation: flicker 1.5s infinite alternate; /* Flicker effect */
+            animation: flicker 1.5s infinite alternate;
+            font-size: clamp(16px, 3vw, 20px); /* Responsive header */
         }
 
         @keyframes flicker {
           0%, 18%, 22%, 25%, 53%, 57%, 100% { text-shadow: 0 0 4px #0f0, 0 0 11px #0f0, 0 0 19px #0f0, 0 0 40px #0f0, 0 0 80px #0f0, 0 0 90px #0f0, 0 0 100px #0f0, 0 0 150px #0f0; opacity: 1; }
           20%, 24%, 55% { text-shadow: none; opacity: 0.8; }
         }
-
 
         #management-screen .status-readout {
             display: flex;
@@ -97,164 +106,158 @@
             padding-bottom: 5px;
         }
          #management-screen .status-readout span {
-             min-width: 100px;
+             min-width: 80px; /* Adjusted min-width */
              text-align: center;
+             flex-basis: 0; /* Allow flex items to share space */
+             flex-grow: 1;
          }
 
-
         #management-screen .control-group {
-             margin-bottom: 8px; /* Reduced margin */
-             display: flex; /* Use flexbox for alignment */
-             align-items: center; /* Center items vertically */
-             flex-wrap: wrap; /* Allow wrapping on small screens if needed */
+             margin-bottom: 8px;
+             display: flex;
+             align-items: center;
+             flex-wrap: wrap; /* Allow wrapping */
          }
 
         #management-screen label {
-            /* display: inline-block; */ /* Replaced by flex */
-            width: 80px; /* Fixed width for labels */
+            width: 80px;
             margin-bottom: 3px;
-            flex-shrink: 0; /* Prevent label from shrinking */
+            flex-shrink: 0;
         }
 
         #management-screen input[type="range"] {
-            /* width: calc(70% - 40px); */ /* Replaced by flex */
-            flex-grow: 1; /* Allow slider to take remaining space */
+            flex-grow: 1;
             margin-bottom: 5px;
-            /* vertical-align: middle; */ /* Replaced by flex align-items */
-            accent-color: #0f0; /* Make slider green */
-            outline: none; /* Remove default focus outline */
-            min-width: 100px; /* Ensure slider doesn't get too small */
+            accent-color: #0f0;
+            outline: none;
+            min-width: 100px;
             margin-left: 5px;
             margin-right: 5px;
+            height: 20px; /* Ensure consistent height */
         }
 
         #management-screen .power-value {
             font-weight: bold;
-            min-width: 35px; /* Ensure alignment */
-            /* display: inline-block; */ /* Replaced by flex */
+            min-width: 35px;
             text-align: right;
              margin-left: 5px;
-             /* vertical-align: middle; */ /* Replaced by flex align-items */
-             flex-shrink: 0; /* Prevent value from shrinking */
+             flex-shrink: 0;
         }
 
         #management-screen button {
             display: block;
-            margin: 10px auto 0; /* Reduced margin */
-            padding: 8px 15px;
+            margin: 15px auto 5px; /* Adjusted margin */
+            padding: 10px 20px; /* Slightly larger */
             background-color: #0f0;
             color: #000;
             border: none;
             font-family: inherit;
-            font-size: 14px;
-            cursor: pointer; /* Keep pointer for mouse users */
+            font-size: clamp(14px, 2.5vw, 16px); /* Responsive font */
+            cursor: pointer;
             text-transform: uppercase;
             transition: background-color 0.2s, color 0.2s;
-            outline: none; /* Remove default focus outline */
+            outline: none;
+            border-radius: 4px; /* Slight rounding */
         }
-
-        #management-screen button:hover {
-            background-color: #000;
-            color: #0f0;
-            outline: 1px solid #0f0;
-        }
-        #management-screen button:disabled {
+         #management-screen button:hover {
+             background-color: #000;
+             color: #0f0;
+             outline: 1px solid #0f0;
+         }
+         #management-screen button:disabled {
+              background-color: #555;
+              color: #999;
+              cursor: not-allowed;
+              outline: none;
+         }
+         #management-screen button:disabled:hover {
              background-color: #555;
              color: #999;
-             cursor: not-allowed;
              outline: none;
-        }
-        #management-screen button:disabled:hover {
-            background-color: #555;
-            color: #999;
-            outline: none;
-        }
+         }
 
 
-        /* Style for the currently focused control in Management Screen */
         .focused-control {
-             outline: 2px solid #ff0 !important; /* Yellow outline for focus */
+             outline: 2px solid #ff0 !important;
              box-shadow: 0 0 10px #ff0;
         }
 
-
         #hud {
             position: absolute;
-            top: 5px; /* Adjusted slightly */
+            top: 5px;
             left: 10px;
             right: 10px;
             display: flex;
             justify-content: space-between;
-            color: #0f0; /* Green HUD text */
-            font-size: clamp(12px, 2.5vw, 16px); /* Responsive font size */
-            pointer-events: none; /* Allow clicks through HUD */
+            color: #0f0;
+            font-size: clamp(12px, 2.5vw, 16px);
+            pointer-events: none;
             text-shadow: 0 0 5px #0f0;
-            z-index: 10; /* Ensure HUD is above canvas */
+            z-index: 10;
         }
          #hud .hud-group {
              display: flex;
-             gap: 15px; /* Space between items */
+             gap: clamp(10px, 2vw, 15px); /* Responsive gap */
          }
 
-
-         /* Blinking cursor effect for management screen */
         .cursor::after {
             content: '_';
             opacity: 0;
             animation: blink 1s step-start infinite;
         }
-
         @keyframes blink {
             50% { opacity: 1; }
         }
 
          /* --- Touch Controls --- */
         #touch-controls {
-            display: none; /* Hidden by default, shown via JS */
-            width: 100%; /* Take full width below game */
-            max-width: 600px; /* Match game container width */
-            margin-top: 15px; /* Space above controls */
-            padding: 0 10px; /* Padding on sides */
+            display: none; /* Hidden by default */
+            width: 100%; /* Full width */
+            padding: 10px 10px; /* Padding top/bottom and sides */
             box-sizing: border-box;
-            justify-content: space-between; /* Space out buttons */
-            align-items: center; /* Vertically align */
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0; /* Prevent controls from shrinking */
+            background-color: #1a1a1a; /* Dark background for controls area */
+            border-top: 1px solid #0f0; /* Separator line */
         }
 
         #touch-controls button {
-            background-color: rgba(0, 255, 0, 0.3); /* Semi-transparent green */
+            background-color: rgba(0, 255, 0, 0.3);
             border: 2px solid #0f0;
             color: #0f0;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 24px; /* Larger for touch */
+            font-size: clamp(20px, 4vw, 28px); /* Responsive font size */
             font-weight: bold;
-            padding: 15px 20px; /* Generous padding */
-            border-radius: 8px; /* Rounded corners */
-            cursor: pointer; /* Indicate interactivity */
-            touch-action: manipulation; /* Improve touch responsiveness */
-            flex-grow: 1; /* Allow buttons to grow */
-            margin: 0 5px; /* Space between buttons */
+            padding: clamp(10px, 2vh, 15px) clamp(15px, 3vw, 20px); /* Responsive padding */
+            border-radius: 8px;
+            cursor: pointer;
+            touch-action: manipulation;
+            flex-grow: 1;
+            margin: 0 5px;
             text-align: center;
-            min-width: 60px; /* Minimum width */
+            min-width: 50px; /* Smaller min-width */
+            /* Prevent button text selection */
+             user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         #touch-controls button:active {
-            background-color: rgba(0, 255, 0, 0.6); /* Darker green when pressed */
+            background-color: rgba(0, 255, 0, 0.6);
         }
 
         #touch-controls .fire-button {
-            /* Optional: Make fire button slightly different */
-            /* background-color: rgba(255, 255, 0, 0.3); */
-            /* border-color: #ff0; */
-            /* color: #ff0; */
-            min-width: 100px; /* Make fire button wider */
-            flex-grow: 1.5; /* Make it slightly larger */
+            min-width: 80px; /* Adjusted min-width */
+            flex-grow: 1.5;
         }
 
     </style>
 </head>
 <body>
+    <h1>Core Defender <span class="cursor"></span></h1>
     <div id="game-wrapper">
-        <h1>Core Defender <span class="cursor"></span></h1>
         <div id="game-container">
             <div id="hud">
                  <div class="hud-group">
@@ -267,7 +270,7 @@
                      <span id="lives">LIVES: 3</span>
                  </div>
             </div>
-            <canvas id="game-canvas" width="600" height="400"></canvas>
+            <canvas id="game-canvas"></canvas>
             <div id="management-screen">
                 <h2>SYSTEM MANAGEMENT <span class="cursor"></span></h2>
                 <div class="status-readout">
@@ -297,8 +300,8 @@
                 </div>
                 <p id="power-warning" style="color: #f00; display: none;">WARNING: Total power exceeds 100%!</p>
                  <button id="start-wave-button">EXEC_WAVE.BAT</button>
-                <p style="margin-top: 10px; font-size: 12px;">// WPN:Fire Rate | SHD:Hits | COOL:Heat Sink | REPAIR:Hull Regen</p>
-                <p style="font-size: 12px;">// Adjust power levels and press EXEC_WAVE.BAT to start.</p>
+                <p style="margin-top: 10px; font-size: clamp(10px, 1.8vw, 12px);">// WPN:Fire Rate | SHD:Hits | COOL:Heat Sink | REPAIR:Hull Regen</p>
+                <p style="font-size: clamp(10px, 1.8vw, 12px);">// Adjust power levels and press EXEC_WAVE.BAT to start.</p>
             </div>
         </div>
 
@@ -315,6 +318,7 @@
             // --- DOM Elements ---
             const canvas = document.getElementById('game-canvas');
             const ctx = canvas.getContext('2d');
+            const gameContainer = document.getElementById('game-container'); // Get container reference
             const managementScreen = document.getElementById('management-screen');
             const startWaveButton = document.getElementById('start-wave-button');
             const weaponPowerSlider = document.getElementById('weapon-power');
@@ -333,20 +337,20 @@
             const hudHeatDisplay = document.getElementById('heat');
             const manHullDisplay = document.getElementById('man-hull');
             const manHeatDisplay = document.getElementById('man-heat');
-            const touchControlsDiv = document.getElementById('touch-controls'); // Touch controls container
+            const touchControlsDiv = document.getElementById('touch-controls');
             const touchLeftButton = document.getElementById('touch-left');
             const touchRightButton = document.getElementById('touch-right');
             const touchFireButton = document.getElementById('touch-fire');
 
             // --- Game State ---
-            let gameState = 'MANAGEMENT'; // Initial state
+            let gameState = 'MANAGEMENT';
             let score = 0;
             let lives = 3;
             let wave = 1;
             let player;
             let bullets = [];
             let enemies = [];
-            let keys = {}; // Still keep track of keyboard keys
+            let keys = {};
             let capturedPlayer = null;
             let particles = [];
 
@@ -365,19 +369,25 @@
             const focusableControls = [weaponPowerSlider, shieldPowerSlider, coolingPowerSlider, repairPowerSlider, startWaveButton];
             let focusedControlIndex = 0;
 
-            // --- Game Settings ---
+            // --- Logical Game Dimensions & Scaling ---
+            const logicalWidth = 600;
+            const logicalHeight = 400;
+            let scaleX = 1;
+            let scaleY = 1;
+
+            // --- Game Settings (relative to logical 600x400) ---
             const playerWidth = 30;
             const playerHeight = 20;
             const enemyWidth = 30;
             const enemyHeight = 20;
-            const playerSpeed = 5;
+            const playerSpeed = 5; // Speed in logical pixels per frame
             const bulletWidth = 4;
             const bulletHeight = 8;
             const bulletRadius = 3;
-            const bulletSpeedBase = 5;
-            const fireRateCooldownBase = 30; // Lower is faster base rate
-            const enemySpacing = 40;
-            const sliderStep = 5; // Step for keyboard adjustment
+            const bulletSpeedBase = 5; // Speed in logical pixels per frame
+            const fireRateCooldownBase = 30;
+            const enemySpacing = 40; // Spacing in logical pixels
+            const sliderStep = 5;
 
             // --- Hull & Heat Settings ---
             const maxHullIntegrity = 100;
@@ -386,11 +396,11 @@
             const baseHeatDissipation = 0.1;
             const coolingPowerFactor = 0.005;
             const overheatThreshold = 85;
-            const overheatCooldown = 60; // Frames weapon is disabled
-            const repairPowerFactor = 0.2; // Hull points repaired per % power * wave
+            const overheatCooldown = 60;
+            const repairPowerFactor = 0.2;
 
             // --- Difficulty Settings ---
-            const enemySpeedBase = 0.5;
+            const enemySpeedBase = 0.5; // Speed in logical pixels per frame
             const enemySpeedIncrease = 0.1;
             const maxEnemySpeed = 3;
             const startEnemyRows = 1;
@@ -405,23 +415,23 @@
             let currentEnemyRows = startEnemyRows;
             let currentEnemiesPerRow = startEnemiesPerRow;
 
-            // --- Enemy Specific Settings ---
+            // --- Enemy Specific Settings (relative to logical 600x400) ---
             const DIVE_TRIGGER_Y = 100;
             const DIVE_PREP_TIME = 45;
             const DIVE_SPEED_FACTOR = 2.5;
-            const DIVE_HORIZONTAL_SPEED = 2;
+            const DIVE_HORIZONTAL_SPEED = 2; // Logical pixels per frame
             const TRACTOR_TRIGGER_Y = 100;
             const TRACTOR_PREP_TIME = 60;
-            const TRACTOR_BEAM_SPEED = 3;
-            const TRACTOR_BEAM_MAX_LENGTH = 300;
-            const TRACTOR_BEAM_WIDTH = 30;
-            const CAPTURE_RETURN_SPEED = 2;
+            const TRACTOR_BEAM_SPEED = 3; // Logical pixels per frame
+            const TRACTOR_BEAM_MAX_LENGTH = 300; // Logical pixels
+            const TRACTOR_BEAM_WIDTH = 30; // Logical pixels
+            const CAPTURE_RETURN_SPEED = 2; // Logical pixels per frame
 
             // --- Particle Settings ---
             const PARTICLE_COUNT = 8;
-            const PARTICLE_SPEED_RANGE = { min: 1, max: 3 };
-            const PARTICLE_LIFE_RANGE = { min: 20, max: 40 };
-            const PARTICLE_SIZE_RANGE = { min: 2, max: 4 };
+            const PARTICLE_SPEED_RANGE = { min: 1, max: 3 }; // Logical pixels per frame
+            const PARTICLE_LIFE_RANGE = { min: 20, max: 40 }; // Frames
+            const PARTICLE_SIZE_RANGE = { min: 2, max: 4 }; // Logical pixels
 
             // --- Audio Setup ---
             let audioInitialized = false;
@@ -429,9 +439,9 @@
             let bassSynth, bassSequence;
 
             function initializeAudio() {
+                // ... (Audio initialization code remains the same) ...
                 if (typeof Tone === 'undefined') { console.error("Tone.js is not loaded yet!"); return; }
                 if (audioInitialized) return;
-                // Use a user interaction event (like the first touch/click) to start audio context
                 Tone.start().then(() => {
                     console.log("Audio Context Started");
                     laserSynth = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }, volume: -12 }).toDestination();
@@ -439,7 +449,7 @@
                     uiSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.05, sustain: 0, release: 0.1 }, volume: -18 }).toDestination();
                     specialSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 }, volume: -10 }).toDestination();
                     damageSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'square' }, envelope: { attack: 0.02, decay: 0.3, sustain: 0, release: 0.1 }, volume: -10 }).toDestination();
-                    overheatSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.1, decay: 0.2, sustain: 0, release: 0.1 }, volume: -8 }).toDestination(); // Warning sound
+                    overheatSynth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.1, decay: 0.2, sustain: 0, release: 0.1 }, volume: -8 }).toDestination();
                     bassSynth = new Tone.MonoSynth({ oscillator: { type: "square" }, filter: { Q: 2, type: "lowpass", rolloff: -12 }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.4, release: 0.5 }, filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.8, release: 0.5, baseFrequency: 100, octaves: 4 }, volume: -18 }).toDestination();
                     const bassNotes = ["C2", null, "G2", null, "Eb2", null, "G2", "Bb1"];
                     bassSequence = new Tone.Sequence((time, note) => { if (note) { bassSynth.triggerAttackRelease(note, "8n", time); } }, bassNotes, "8n");
@@ -452,32 +462,17 @@
             }
 
             // --- Particle Class ---
+            // Uses logical coordinates, scaling happens during drawing
             class Particle {
-                constructor(x, y, color) {
-                    this.x = x;
-                    this.y = y;
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = Math.random() * (PARTICLE_SPEED_RANGE.max - PARTICLE_SPEED_RANGE.min) + PARTICLE_SPEED_RANGE.min;
-                    this.vx = Math.cos(angle) * speed;
-                    this.vy = Math.sin(angle) * speed;
-                    this.size = Math.random() * (PARTICLE_SIZE_RANGE.max - PARTICLE_SIZE_RANGE.min) + PARTICLE_SIZE_RANGE.min;
-                    this.maxLife = Math.random() * (PARTICLE_LIFE_RANGE.max - PARTICLE_LIFE_RANGE.min) + PARTICLE_LIFE_RANGE.min;
-                    this.life = this.maxLife;
-                    // Slightly adjusted particle colors for visibility
-                    this.color = (Math.random() < 0.1) ? '#fff' : (Math.random() < 0.1 ? '#ff0' : color);
-                }
-                update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    this.life--;
-                }
-                draw() {
-                    // Use save/restore for globalAlpha changes
+                // ... (Particle constructor and update remain the same, using logical speeds/sizes) ...
+                 constructor(x, y, color) { this.x = x; this.y = y; const angle = Math.random() * Math.PI * 2; const speed = Math.random() * (PARTICLE_SPEED_RANGE.max - PARTICLE_SPEED_RANGE.min) + PARTICLE_SPEED_RANGE.min; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed; this.size = Math.random() * (PARTICLE_SIZE_RANGE.max - PARTICLE_SIZE_RANGE.min) + PARTICLE_SIZE_RANGE.min; this.maxLife = Math.random() * (PARTICLE_LIFE_RANGE.max - PARTICLE_LIFE_RANGE.min) + PARTICLE_LIFE_RANGE.min; this.life = this.maxLife; this.color = (Math.random() < 0.1) ? '#fff' : (Math.random() < 0.1 ? '#ff0' : color); } update() { this.x += this.vx; this.y += this.vy; this.life--; }
+                draw(ctx) { // Pass context for drawing
                     ctx.save();
                     ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
                     ctx.fillStyle = this.color;
+                    // Draw using logical coordinates (scaling is applied before calling this)
                     ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
-                    ctx.restore(); // Restore alpha
+                    ctx.restore();
                 }
             }
             function createExplosion(x, y, color) {
@@ -487,29 +482,14 @@
             }
 
             // --- Player Class ---
+            // Uses logical coordinates, scaling happens during drawing
             class Player {
-                constructor(x, y, width, height, color) {
-                    this.x = x;
-                    this.y = y;
-                    this.width = width;
-                    this.height = height;
-                    this.color = color;
-                    this.fireCooldown = 0;
-                    this.isCaptured = false;
-                    this.isOverheated = false;
-                    this.hullIntegrity = maxHullIntegrity; // Start with full hull
-                    this.heat = 0; // Start with zero heat
-                    this.updateMaxHits();
-                    this.currentHits = this.maxHits;
-                }
-                updateMaxHits() {
-                    this.maxHits = 1 + Math.floor(shieldPower / 50);
-                    this.currentHits = Math.min(this.currentHits, this.maxHits);
-                }
-                draw() {
+                // ... (Constructor and updateMaxHits remain the same) ...
+                constructor(x, y, width, height, color) { this.x = x; this.y = y; this.width = width; this.height = height; this.color = color; this.fireCooldown = 0; this.isCaptured = false; this.isOverheated = false; this.hullIntegrity = maxHullIntegrity; this.heat = 0; this.updateMaxHits(); this.currentHits = this.maxHits; } updateMaxHits() { this.maxHits = 1 + Math.floor(shieldPower / 50); this.currentHits = Math.min(this.currentHits, this.maxHits); }
+                draw(ctx) { // Pass context for drawing
                     const centerX = this.x + this.width / 2;
                     const centerY = this.y + this.height / 2;
-                    // Draw shield
+                    // --- Draw Shield ---
                     if (!this.isCaptured) {
                         const shieldOpacityFactor = this.maxHits > 0 ? (this.currentHits / this.maxHits) : 0;
                         ctx.beginPath();
@@ -517,23 +497,23 @@
                         ctx.fillStyle = `rgba(0, 255, 255, ${0.15 + 0.3 * shieldOpacityFactor})`;
                         ctx.fill();
                         ctx.strokeStyle = `rgba(0, 255, 255, ${0.3 + 0.5 * shieldOpacityFactor})`;
-                        ctx.lineWidth = 1;
+                        ctx.lineWidth = 1 / Math.min(scaleX, scaleY); // Adjust line width based on scaling
                         ctx.stroke();
                     }
-                    // Draw ship body - Tint red if overheated
-                    ctx.fillStyle = this.isOverheated ? '#f55' : '#0f0'; // Use main color or red tint
+                    // --- Draw Ship Body ---
+                    ctx.fillStyle = this.isOverheated ? '#f55' : '#0f0';
                     ctx.beginPath();
-                    ctx.moveTo(centerX, this.y); // Nose
-                    ctx.lineTo(this.x + this.width, this.y + this.height * 0.8); // Right wingtip back
-                    ctx.lineTo(centerX + this.width * 0.2, this.y + this.height * 0.7); // Right inner engine indent
-                    ctx.lineTo(centerX + this.width * 0.2, this.y + this.height); // Right engine back
-                    ctx.lineTo(centerX - this.width * 0.2, this.y + this.height); // Left engine back
-                    ctx.lineTo(centerX - this.width * 0.2, this.y + this.height * 0.7); // Left inner engine indent
-                    ctx.lineTo(this.x, this.y + this.height * 0.8); // Left wingtip back
+                    ctx.moveTo(centerX, this.y);
+                    ctx.lineTo(this.x + this.width, this.y + this.height * 0.8);
+                    ctx.lineTo(centerX + this.width * 0.2, this.y + this.height * 0.7);
+                    ctx.lineTo(centerX + this.width * 0.2, this.y + this.height);
+                    ctx.lineTo(centerX - this.width * 0.2, this.y + this.height);
+                    ctx.lineTo(centerX - this.width * 0.2, this.y + this.height * 0.7);
+                    ctx.lineTo(this.x, this.y + this.height * 0.8);
                     ctx.closePath();
                     ctx.fill();
-                    // Details
-                    ctx.fillStyle = '#fff'; // Cockpit
+                    // --- Details ---
+                    ctx.fillStyle = '#fff';
                     ctx.beginPath();
                     ctx.moveTo(centerX, this.y + this.height * 0.1);
                     ctx.lineTo(centerX + this.width * 0.1, this.y + this.height * 0.3);
@@ -541,305 +521,136 @@
                     ctx.lineTo(centerX - this.width * 0.1, this.y + this.height * 0.3);
                     ctx.closePath();
                     ctx.fill();
-                    // Engine glow (subtle)
                     ctx.fillStyle = '#aaa';
                     ctx.fillRect(centerX + this.width * 0.2 - 2, this.y + this.height - 2, 4, 4);
                     ctx.fillRect(centerX - this.width * 0.2 - 2, this.y + this.height - 2, 4, 4);
                 }
                 update() {
                     if (this.isCaptured) return;
-
-                    // --- Movement --- Check both keyboard AND touch controls
+                    // --- Movement (uses logical coordinates) ---
+                    const rightBoundary = logicalWidth - this.width; // Use logical width
                     if ((keys['ArrowLeft'] || touchLeftActive) && this.x > 0) {
                         this.x -= playerSpeed;
                     }
-                    if ((keys['ArrowRight'] || touchRightActive) && this.x < canvas.width - this.width) {
+                    if ((keys['ArrowRight'] || touchRightActive) && this.x < rightBoundary) {
                         this.x += playerSpeed;
                     }
+                    // Clamp position just in case
+                    this.x = Math.max(0, Math.min(this.x, rightBoundary));
 
-                    // Heat Dissipation
-                    const dissipationAmount = baseHeatDissipation + (coolingPower * coolingPowerFactor);
-                    this.heat = Math.max(0, this.heat - dissipationAmount);
+                    // ... (Heat, Overheat, Cooldown logic remains the same) ...
+                     const dissipationAmount = baseHeatDissipation + (coolingPower * coolingPowerFactor); this.heat = Math.max(0, this.heat - dissipationAmount); if (this.isOverheated) { if (this.heat < overheatThreshold * 0.5) { this.isOverheated = false; } else { this.fireCooldown = Math.max(this.fireCooldown, 2); } } else { if (this.heat >= maxHeat) { console.log("Overheated!"); this.isOverheated = true; if (audioInitialized) overheatSynth.triggerAttackRelease("A3", "4n", Tone.now()); this.fireCooldown = overheatCooldown; } } if (this.fireCooldown > 0) this.fireCooldown--;
 
-                    // Overheat Check
-                    if (this.isOverheated) {
-                        if (this.heat < overheatThreshold * 0.5) { // Cooldown condition
-                            this.isOverheated = false;
-                        } else {
-                            this.fireCooldown = Math.max(this.fireCooldown, 2); // Keep weapon disabled
-                        }
-                    } else {
-                        if (this.heat >= maxHeat) {
-                            console.log("Overheated!");
-                            this.isOverheated = true;
-                            if (audioInitialized) overheatSynth.triggerAttackRelease("A3", "4n", Tone.now());
-                            this.fireCooldown = overheatCooldown; // Disable weapon for a duration
-                        }
-                    }
-
-                    // Shooting Cooldown
-                    if (this.fireCooldown > 0) this.fireCooldown--;
-
-                    // --- Shooting Attempt --- Check both keyboard AND touch controls
+                    // --- Shooting Attempt ---
                     if (!this.isOverheated && (keys[' '] || touchFireActive) && this.fireCooldown === 0) {
                         this.shoot();
                         const effectiveCooldown = fireRateCooldownBase / (1 + (weaponPower / 50));
-                        this.fireCooldown = Math.max(5, Math.floor(effectiveCooldown)); // Ensure minimum cooldown
+                        this.fireCooldown = Math.max(5, Math.floor(effectiveCooldown));
                     }
-                    updateHUD(); // Update HUD frequently
+                    // No HUD update here, done globally
                 }
                 shoot() {
                     const effectiveBulletSpeed = bulletSpeedBase * (1 + (weaponPower / 100));
+                    // Spawn bullet at logical coordinates
                     bullets.push(new Bullet(this.x + this.width / 2, this.y, bulletWidth, bulletHeight, '#ff0', effectiveBulletSpeed));
                     this.heat = Math.min(maxHeat, this.heat + heatGenerationPerShot);
                     if (audioInitialized) laserSynth.triggerAttackRelease("G5", "32n", Tone.now());
                 }
                 hit() {
-                    if (this.isCaptured) return;
-                    if (audioInitialized) damageSynth.triggerAttackRelease("C3", "8n", Tone.now());
-
-                    if (this.currentHits > 0) {
-                        this.currentHits--; // Damage shield first
-                    } else if (this.hullIntegrity > 0) {
-                        this.hullIntegrity -= 10; // Damage hull
-                        this.hullIntegrity = Math.max(0, this.hullIntegrity); // Clamp at 0
-                        console.log("Hull hit! Integrity:", this.hullIntegrity);
-                        if (this.hullIntegrity <= 0) {
-                            handlePlayerDeath();
-                        }
-                    }
+                    // ... (Hit logic remains the same) ...
+                     if (this.isCaptured) return; if (audioInitialized) damageSynth.triggerAttackRelease("C3", "8n", Tone.now()); if (this.currentHits > 0) { this.currentHits--; } else if (this.hullIntegrity > 0) { this.hullIntegrity -= 10; this.hullIntegrity = Math.max(0, this.hullIntegrity); console.log("Hull hit! Integrity:", this.hullIntegrity); if (this.hullIntegrity <= 0) { handlePlayerDeath(); } }
                 }
             }
 
             // --- Bullet Class ---
+            // Uses logical coordinates, scaling happens during drawing
             class Bullet {
-                constructor(x, y, width, height, color, speed) {
-                    this.x = x;
-                    this.y = y;
-                    this.width = width;
-                    this.height = height;
-                    this.radius = bulletRadius;
-                    this.color = color;
-                    this.speed = speed;
-                }
-                draw() {
-                    // Simple circle bullet
+                 // ... (Constructor remains the same) ...
+                 constructor(x, y, width, height, color, speed) { this.x = x; this.y = y; this.width = width; this.height = height; this.radius = bulletRadius; this.color = color; this.speed = speed; }
+                draw(ctx) { // Pass context
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                     ctx.fillStyle = this.color;
                     ctx.fill();
-                    // Optional inner highlight
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2);
                     ctx.fillStyle = '#fff';
                     ctx.fill();
                 }
                 update() {
-                    this.y -= this.speed;
+                    this.y -= this.speed; // Move in logical coordinates
                 }
             }
 
             // --- Enemy Class ---
+            // Uses logical coordinates, scaling happens during drawing
             class Enemy {
-                constructor(x, y, width, height, color, type = 'STANDARD') {
-                    this.x = x;
-                    this.y = y;
-                    this.width = width;
-                    this.height = height;
-                    this.baseColor = color;
-                    this.color = color; // Current color (for flashing)
-                    this.type = type;
-                    this.state = 'FORMATION'; // FORMATION, PRE_TRACTOR, TRACTOR_ACTIVE, CAPTURING, PRE_DIVE, DIVING
-                    this.diveTimer = 0;
-                    this.diveTargetX = 0;
-                    this.tractorTimer = 0;
-                    this.isTractorBeamActive = false;
-                    this.tractorBeamLength = 0;
-                    this.capturedShip = null;
-                    this.remove = false; // Flag for removal
-                }
-                draw() {
+                 // ... (Constructor remains the same) ...
+                 constructor(x, y, width, height, color, type = 'STANDARD') { this.x = x; this.y = y; this.width = width; this.height = height; this.baseColor = color; this.color = color; this.type = type; this.state = 'FORMATION'; this.diveTimer = 0; this.diveTargetX = 0; this.tractorTimer = 0; this.isTractorBeamActive = false; this.tractorBeamLength = 0; this.capturedShip = null; this.remove = false; }
+                draw(ctx) { // Pass context
                     const centerX = this.x + this.width / 2;
                     const centerY = this.y + this.height / 2;
-                    ctx.fillStyle = this.color; // Use current color
+                    ctx.fillStyle = this.color;
 
-                    // Draw based on type
                     if (this.type === 'STANDARD') {
-                        // Simple oval shape
-                        ctx.beginPath();
-                        ctx.ellipse(centerX, centerY, this.width * 0.4, this.height * 0.5, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        // Small side pods
-                        ctx.fillRect(this.x, centerY - 3, 6, 6);
-                        ctx.fillRect(this.x + this.width - 6, centerY - 3, 6, 6);
-                        // Cockpit dot
-                        ctx.fillStyle = '#fff';
-                        ctx.beginPath();
-                        ctx.arc(centerX, centerY - this.height * 0.1, 2, 0, Math.PI * 2);
-                        ctx.fill();
-                    } else { // DIVER / TRACTOR type
-                        // More angular shape
-                        ctx.beginPath();
-                        ctx.moveTo(centerX, this.y); // Nose
-                        ctx.lineTo(this.x + this.width, centerY); // Right wingtip
-                        ctx.lineTo(centerX + this.width * 0.2, this.y + this.height); // Right back corner
-                        ctx.lineTo(centerX - this.width * 0.2, this.y + this.height); // Left back corner
-                        ctx.lineTo(this.x, centerY); // Left wingtip
-                        ctx.closePath();
-                        ctx.fill();
-                        // Eye/Sensor
-                        ctx.fillStyle = '#ff0'; // Yellow eye
-                        ctx.beginPath();
-                        ctx.arc(centerX, centerY + this.height * 0.1, 2.5, 0, Math.PI * 2);
-                        ctx.fill();
+                        ctx.beginPath(); ctx.ellipse(centerX, centerY, this.width * 0.4, this.height * 0.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(this.x, centerY - 3, 6, 6); ctx.fillRect(this.x + this.width - 6, centerY - 3, 6, 6); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(centerX, centerY - this.height * 0.1, 2, 0, Math.PI * 2); ctx.fill();
+                    } else {
+                        ctx.beginPath(); ctx.moveTo(centerX, this.y); ctx.lineTo(this.x + this.width, centerY); ctx.lineTo(centerX + this.width * 0.2, this.y + this.height); ctx.lineTo(centerX - this.width * 0.2, this.y + this.height); ctx.lineTo(this.x, centerY); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#ff0'; ctx.beginPath(); ctx.arc(centerX, centerY + this.height * 0.1, 2.5, 0, Math.PI * 2); ctx.fill();
                     }
 
-                    // Draw Tractor Beam if active
                     if (this.isTractorBeamActive) {
-                        ctx.beginPath();
-                        ctx.moveTo(this.x, this.y + this.height); // Bottom left
-                        ctx.lineTo(this.x + this.width, this.y + this.height); // Bottom right
-                        ctx.lineTo(centerX + TRACTOR_BEAM_WIDTH / 2, this.y + this.height + this.tractorBeamLength); // Tip right
-                        ctx.lineTo(centerX - TRACTOR_BEAM_WIDTH / 2, this.y + this.height + this.tractorBeamLength); // Tip left
-                        ctx.closePath();
-                        ctx.fillStyle = 'rgba(0, 150, 255, 0.3)'; // Semi-transparent blue fill
-                        ctx.fill();
-                        ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)'; // Light blue outline
-                        ctx.stroke();
+                        ctx.beginPath(); ctx.moveTo(this.x, this.y + this.height); ctx.lineTo(this.x + this.width, this.y + this.height); ctx.lineTo(centerX + TRACTOR_BEAM_WIDTH / 2, this.y + this.height + this.tractorBeamLength); ctx.lineTo(centerX - TRACTOR_BEAM_WIDTH / 2, this.y + this.height + this.tractorBeamLength); ctx.closePath(); ctx.fillStyle = 'rgba(0, 150, 255, 0.3)'; ctx.fill(); ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)'; ctx.lineWidth = 1 / Math.min(scaleX, scaleY); ctx.stroke(); // Adjust line width
                     }
-
-                    // Draw captured ship if it exists
+                    // Draw captured ship (pass context)
                     if (this.capturedShip) {
-                        this.capturedShip.draw();
+                        this.capturedShip.draw(ctx);
                     }
                 }
                 update() {
-                    let originalColor = this.baseColor; // Store base color
-
-                    // --- Movement and State Logic ---
+                    let originalColor = this.baseColor;
+                    // --- Movement and State Logic (uses logical coordinates/speeds) ---
                     if (this.type === 'STANDARD') {
                         this.y += currentEnemySpeed;
-                    } else if (this.type === 'DIVER') { // Combined Tractor/Diver logic
+                    } else if (this.type === 'DIVER') {
                         switch (this.state) {
-                            case 'FORMATION':
-                                this.y += currentEnemySpeed;
-                                // Check if it should start tractor beam behavior
-                                if (this.y >= TRACTOR_TRIGGER_Y && !this.isTractorBeamActive && !this.capturedShip) {
-                                    this.state = 'PRE_TRACTOR';
-                                    this.tractorTimer = TRACTOR_PREP_TIME;
-                                    this.color = '#00f'; // Flash blue
-                                    if (audioInitialized) specialSynth.triggerAttackRelease("A4", "16n", Tone.now());
-                                }
-                                break;
-                            case 'PRE_TRACTOR':
-                                this.tractorTimer--;
-                                // Slight wobble
-                                this.x += Math.sin(this.tractorTimer * 0.6) * 0.6;
-                                if (this.tractorTimer <= 0) {
-                                    this.state = 'TRACTOR_ACTIVE';
-                                    this.color = originalColor; // Back to normal color
-                                    this.isTractorBeamActive = true;
-                                    this.tractorBeamLength = 0;
-                                }
-                                break;
-                            case 'TRACTOR_ACTIVE':
-                                this.tractorBeamLength += TRACTOR_BEAM_SPEED;
-                                // Check if beam reached max length or captured player
-                                if (this.tractorBeamLength >= TRACTOR_BEAM_MAX_LENGTH || this.capturedShip) {
-                                    this.isTractorBeamActive = false;
-                                    if (!this.capturedShip) { // If didn't capture, prepare to dive
-                                        this.state = 'PRE_DIVE';
-                                        this.diveTimer = DIVE_PREP_TIME;
-                                        this.color = '#ff0'; // Flash yellow
-                                        if (audioInitialized) specialSynth.triggerAttackRelease("G4", "16n", Tone.now());
-                                    } else { // If captured, state remains CAPTURING (set in handlePlayerCapture)
-                                        this.state = 'CAPTURING';
-                                    }
-                                }
-                                break;
-                            case 'CAPTURING':
-                                // Move upwards off screen with the captured ship
-                                this.y -= CAPTURE_RETURN_SPEED;
-                                if (this.capturedShip) {
-                                    // Keep captured ship positioned relative to enemy
-                                    this.capturedShip.x = this.x + this.width / 2 - this.capturedShip.width / 2;
-                                    this.capturedShip.y = this.y + this.height + 5;
-                                }
-                                // Check if off-screen
-                                if (this.y + this.height < 0) {
-                                    this.remove = true;
-                                    // Important: Nullify the global captured player reference if this enemy escapes
-                                    if (this.capturedShip === capturedPlayer) {
-                                        capturedPlayer = null;
-                                    }
-                                }
-                                break;
-                            case 'PRE_DIVE':
-                                this.diveTimer--;
-                                // Slight wobble
-                                this.x += Math.sin(this.diveTimer * 0.5) * 0.5;
-                                if (this.diveTimer <= 0) {
-                                    this.state = 'DIVING';
-                                    this.color = originalColor; // Back to normal color
-                                    // Target the player's current position when dive starts
-                                    if (player && !player.isCaptured) this.diveTargetX = player.x + player.width / 2;
-                                    else this.diveTargetX = this.x; // Or dive straight down if no player
-                                }
-                                break;
-                            case 'DIVING':
-                                // Move down faster
-                                this.y += currentEnemySpeed * DIVE_SPEED_FACTOR;
-                                // Move horizontally towards target
-                                if (Math.abs(this.x - this.diveTargetX) > DIVE_HORIZONTAL_SPEED) {
-                                    this.x += Math.sign(this.diveTargetX - this.x) * DIVE_HORIZONTAL_SPEED;
-                                }
-                                break;
+                            case 'FORMATION': this.y += currentEnemySpeed; if (this.y >= TRACTOR_TRIGGER_Y && !this.isTractorBeamActive && !this.capturedShip) { this.state = 'PRE_TRACTOR'; this.tractorTimer = TRACTOR_PREP_TIME; this.color = '#00f'; if (audioInitialized) specialSynth.triggerAttackRelease("A4", "16n", Tone.now()); } break;
+                            case 'PRE_TRACTOR': this.tractorTimer--; this.x += Math.sin(this.tractorTimer * 0.6) * 0.6; if (this.tractorTimer <= 0) { this.state = 'TRACTOR_ACTIVE'; this.color = originalColor; this.isTractorBeamActive = true; this.tractorBeamLength = 0; } break;
+                            case 'TRACTOR_ACTIVE': this.tractorBeamLength += TRACTOR_BEAM_SPEED; if (this.tractorBeamLength >= TRACTOR_BEAM_MAX_LENGTH || this.capturedShip) { this.isTractorBeamActive = false; if (!this.capturedShip) { this.state = 'PRE_DIVE'; this.diveTimer = DIVE_PREP_TIME; this.color = '#ff0'; if (audioInitialized) specialSynth.triggerAttackRelease("G4", "16n", Tone.now()); } else { this.state = 'CAPTURING'; } } break;
+                            case 'CAPTURING': this.y -= CAPTURE_RETURN_SPEED; if (this.capturedShip) { this.capturedShip.x = this.x + this.width / 2 - this.capturedShip.width / 2; this.capturedShip.y = this.y + this.height + 5; } if (this.y + this.height < 0) { this.remove = true; if (this.capturedShip === capturedPlayer) { capturedPlayer = null; } } break; // Check against logical 0
+                            case 'PRE_DIVE': this.diveTimer--; this.x += Math.sin(this.diveTimer * 0.5) * 0.5; if (this.diveTimer <= 0) { this.state = 'DIVING'; this.color = originalColor; if (player && !player.isCaptured) this.diveTargetX = player.x + player.width / 2; else this.diveTargetX = this.x; } break;
+                            case 'DIVING': this.y += currentEnemySpeed * DIVE_SPEED_FACTOR; if (Math.abs(this.x - this.diveTargetX) > DIVE_HORIZONTAL_SPEED) { this.x += Math.sign(this.diveTargetX - this.x) * DIVE_HORIZONTAL_SPEED; } break;
                         }
                     }
+                    if (this.state !== 'PRE_TRACTOR' && this.state !== 'PRE_DIVE') { this.color = this.baseColor; }
 
-                    // Reset color if not in a flashing state
-                    if (this.state !== 'PRE_TRACTOR' && this.state !== 'PRE_DIVE') {
-                        this.color = this.baseColor;
-                    }
-
-                    // Check if off-screen (bottom) and not currently capturing
-                    if (this.y > canvas.height && this.state !== 'CAPTURING') {
+                    // Check if off logical screen bottom
+                    if (this.y > logicalHeight && this.state !== 'CAPTURING') {
                         this.remove = true;
-                        // If a standard enemy reaches the bottom, game over (or lose life?) - Let's make it game over for now.
                         if (this.type === 'STANDARD' && gameState === 'ACTION') {
                             console.log("Enemy reached bottom!");
-                            lives = 0; // Instant game over if standard enemy passes
+                            lives = 0;
                             gameState = 'GAMEOVER';
                         }
                     }
-                } // End of update()
-            } // End of Enemy Class
+                }
+            }
 
             // --- Game Functions ---
-            function calculateDifficulty() {
-                currentEnemySpeed = Math.min(maxEnemySpeed, enemySpeedBase + (wave - 1) * enemySpeedIncrease);
-                currentEnemyRows = Math.min(maxEnemyRows, startEnemyRows + Math.floor((wave - 1) / rowsIncreaseInterval));
-                currentEnemiesPerRow = Math.min(maxEnemiesPerRow, startEnemiesPerRow + Math.floor((wave - 1) / perRowIncreaseInterval));
-                console.log(`Wave ${wave}: Speed=${currentEnemySpeed.toFixed(1)}, Rows=${currentEnemyRows}, PerRow=${currentEnemiesPerRow}`);
-            }
+            function calculateDifficulty() { /* ... (remains the same) ... */ currentEnemySpeed = Math.min(maxEnemySpeed, enemySpeedBase + (wave - 1) * enemySpeedIncrease); currentEnemyRows = Math.min(maxEnemyRows, startEnemyRows + Math.floor((wave - 1) / rowsIncreaseInterval)); currentEnemiesPerRow = Math.min(maxEnemiesPerRow, startEnemiesPerRow + Math.floor((wave - 1) / perRowIncreaseInterval)); console.log(`Wave ${wave}: Speed=${currentEnemySpeed.toFixed(1)}, Rows=${currentEnemyRows}, PerRow=${currentEnemiesPerRow}`); }
             function spawnEnemies() {
                 enemies = [];
+                // Use logical width/spacing for calculations
                 const totalWidth = currentEnemiesPerRow * enemySpacing;
-                const startX = (canvas.width - totalWidth) / 2 + enemySpacing / 2 - enemyWidth / 2; // Centered start X
-                const startY = 50; // Initial Y position
+                const startX = (logicalWidth - totalWidth) / 2 + enemySpacing / 2 - enemyWidth / 2;
+                const startY = 50; // Logical Y
 
                 for (let r = 0; r < currentEnemyRows; r++) {
                     for (let c = 0; c < currentEnemiesPerRow; c++) {
                         const x = startX + c * enemySpacing;
                         const y = startY + r * enemySpacing;
                         let type = 'STANDARD';
-                        let color = `hsl(${270 + r * 15}, 100%, 50%)`; // Standard color based on row
-
-                        // Make the last row 'DIVER' type
-                        if (r === currentEnemyRows - 1) {
-                            type = 'DIVER';
-                            color = '#f00'; // Red for diver/tractor enemies
-                        }
+                        let color = `hsl(${270 + r * 15}, 100%, 50%)`;
+                        if (r === currentEnemyRows - 1) { type = 'DIVER'; color = '#f00'; }
                         enemies.push(new Enemy(x, y, enemyWidth, enemyHeight, color, type));
                     }
                 }
@@ -848,594 +659,281 @@
             function handlePlayerDeath() {
                 lives--;
                 updateHUD();
-                createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#f00'); // Player explosion
+                 // Use logical coordinates for explosion
+                if(player) createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#f00');
 
                 if (lives > 0) {
-                    // Respawn player after a short delay? Or instantly? Instant for now.
-                    player = new Player(canvas.width / 2 - playerWidth / 2, canvas.height - 40 - playerHeight / 2, playerWidth, playerHeight, '#0f0');
-                    // Hull resets in constructor, heat/shields reset in startGame
+                    // Respawn using logical coordinates
+                    const respawnX = logicalWidth / 2 - playerWidth / 2;
+                    const respawnY = logicalHeight - 40 - playerHeight / 2;
+                    player = new Player(respawnX, respawnY, playerWidth, playerHeight, '#0f0');
                 } else {
-                    // Game Over
                     if (audioInitialized) specialSynth.triggerAttackRelease("C3", "2n", Tone.now());
                     gameState = 'GAMEOVER';
-                    if (audioInitialized && Tone.Transport.state === 'started') {
-                        Tone.Transport.stop();
-                        Tone.Transport.cancel();
-                        console.log("Music stopped (Game Over)");
-                    }
-                    player = null; // Remove player object
-                    updateControlVisibility(); // Hide touch controls on game over
+                    if (audioInitialized && Tone.Transport.state === 'started') { Tone.Transport.stop(); Tone.Transport.cancel(); console.log("Music stopped (Game Over)"); }
+                    player = null;
+                    updateControlVisibility();
                 }
             }
             function handlePlayerCapture(capturingEnemy) {
-                if (!player || player.isCaptured) return; // Can't capture if already captured or no player
-
-                console.log("Player captured!");
-                if (audioInitialized) damageSynth.triggerAttackRelease("E3", "4n", Tone.now());
-                player.isCaptured = true;
-                capturedPlayer = player; // Store reference to the captured player globally
-                capturingEnemy.capturedShip = player; // Link player to the enemy
-                capturingEnemy.state = 'CAPTURING'; // Set enemy state
-                capturingEnemy.isTractorBeamActive = false; // Turn off beam
-
-                // Player loses a life when captured
-                handlePlayerDeath();
+                 // ... (Logic remains the same, operates on player/enemy objects) ...
+                 if (!player || player.isCaptured) return; console.log("Player captured!"); if (audioInitialized) damageSynth.triggerAttackRelease("E3", "4n", Tone.now()); player.isCaptured = true; capturedPlayer = player; capturingEnemy.capturedShip = player; capturingEnemy.state = 'CAPTURING'; capturingEnemy.isTractorBeamActive = false; handlePlayerDeath(); // Capture still results in losing a life
             }
 
             function updateGameObjects() {
                 if (player && !player.isCaptured) player.update();
 
-                // Update Bullets
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     bullets[i].update();
-                    if (bullets[i].y < 0) {
-                        bullets.splice(i, 1); // Remove if off-screen
-                    }
+                    if (bullets[i].y < 0) bullets.splice(i, 1); // Check against logical 0
                 }
-
-                // Update Enemies
                 for (let i = enemies.length - 1; i >= 0; i--) {
                     enemies[i].update();
-                    // If enemy is capturing, update the captured ship's position visually
                     if (enemies[i].state === 'CAPTURING' && enemies[i].capturedShip) {
                         enemies[i].capturedShip.x = enemies[i].x + enemies[i].width / 2 - enemies[i].capturedShip.width / 2;
                         enemies[i].capturedShip.y = enemies[i].y + enemies[i].height + 5;
                     }
-                    // Remove enemies flagged for removal (off-screen)
                     if (enemies[i].remove) {
-                        // If the removed enemy was capturing the global player, clear the global reference
-                        if (enemies[i].state === 'CAPTURING' && enemies[i].capturedShip === capturedPlayer) {
-                            capturedPlayer = null;
-                        }
+                        if (enemies[i].state === 'CAPTURING' && enemies[i].capturedShip === capturedPlayer) { capturedPlayer = null; }
                         enemies.splice(i, 1);
                     }
                 }
-
-                // Update Particles
                 for (let i = particles.length - 1; i >= 0; i--) {
                     particles[i].update();
-                    if (particles[i].life <= 0) {
-                        particles.splice(i, 1); // Remove dead particles
-                    }
+                    if (particles[i].life <= 0) particles.splice(i, 1);
                 }
 
-                checkCollisions();
+                checkCollisions(); // Uses logical coordinates
 
-                // Check for wave end condition
                 if (enemies.length === 0 && gameState === 'ACTION') {
                     wave++;
                     gameState = 'MANAGEMENT';
-                    showManagementScreen(); // Go back to management screen
+                    showManagementScreen();
                 }
             }
             function drawGameObjects() {
-                // Clear canvas
+                // Clear canvas (physical dimensions)
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Draw Player (if exists and not captured by an enemy still on screen)
+                // --- Apply Scaling ---
+                ctx.save();
+                ctx.scale(scaleX, scaleY);
+
+                // --- Draw Scaled Content ---
+                // Draw Player (pass context)
                 if (player && (!player.isCaptured || !enemies.some(e => e.capturedShip === player))) {
-                     player.draw();
+                     player.draw(ctx);
                 }
-                // Note: Captured player is drawn by the enemy holding it
+                // Draw Bullets (pass context)
+                bullets.forEach(bullet => bullet.draw(ctx));
+                // Draw Enemies (pass context)
+                enemies.forEach(enemy => enemy.draw(ctx));
+                // Draw Particles (pass context)
+                particles.forEach(particle => particle.draw(ctx));
 
-                // Draw Bullets
-                bullets.forEach(bullet => bullet.draw());
+                // --- Restore Context ---
+                ctx.restore();
 
-                // Draw Enemies (and potentially captured player)
-                enemies.forEach(enemy => enemy.draw());
-
-                // Draw Particles
-                // Using save/restore within particle draw now
-                particles.forEach(particle => particle.draw());
+                // --- Draw HUD (HTML overlay, not affected by canvas scale) ---
+                updateHUD(); // Update HUD text content
             }
             function checkCollisions() {
-                // --- Bullet vs Enemy Collisions ---
+                // All collision checks use the logical coordinates stored in the objects
+                // --- Bullet vs Enemy ---
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     for (let j = enemies.length - 1; j >= 0; j--) {
-                        // Basic AABB collision check (can be improved with radius check)
-                        const bullet = bullets[i];
-                        const enemy = enemies[j];
-                        if (!bullet || !enemy) continue; // Skip if already removed
-
-                        const bulletX = bullet.x;
-                        const bulletY = bullet.y;
-                        const bulletRadiusCheck = bullet.radius; // Use radius for check
-
-                        // Check collision using bullet center and enemy bounding box
-                        if (bulletX > enemy.x && bulletX < enemy.x + enemy.width &&
-                            bulletY > enemy.y && bulletY < enemy.y + enemy.height)
-                        {
-                            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.baseColor);
-                            if (audioInitialized) explosionSynth.triggerAttackRelease("8n", Tone.now());
-
-                            // --- Check if rescuing captured player ---
-                            if (enemy.state === 'CAPTURING' && enemy.capturedShip) {
-                                console.log("Captured ship rescued!");
-                                // If the rescued ship is the globally captured one, reset global state
-                                if (enemy.capturedShip === capturedPlayer) {
-                                    capturedPlayer.isCaptured = false; // Mark player as not captured
-                                    // Place rescued player back at bottom center (or last known pos?)
-                                    capturedPlayer.x = canvas.width / 2 - capturedPlayer.width / 2;
-                                    capturedPlayer.y = canvas.height - 40 - capturedPlayer.height / 2;
-                                    player = capturedPlayer; // Restore the global player reference
-                                    capturedPlayer = null; // Clear the global captured reference
-                                }
-                                enemy.capturedShip = null; // Remove link from enemy
-                                if (audioInitialized) specialSynth.triggerAttackRelease("G5", "8n", Tone.now());
-                                // Enemy might still be removed below
-                            }
-
-                            enemies.splice(j, 1); // Remove enemy
-                            bullets.splice(i, 1); // Remove bullet
-                            score += 10;
-                            updateHUD();
-                            break; // Exit inner loop once bullet hits an enemy
+                        const bullet = bullets[i]; const enemy = enemies[j]; if (!bullet || !enemy) continue;
+                        if (bullet.x > enemy.x && bullet.x < enemy.x + enemy.width && bullet.y > enemy.y && bullet.y < enemy.y + enemy.height) {
+                            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.baseColor); if (audioInitialized) explosionSynth.triggerAttackRelease("8n", Tone.now());
+                            if (enemy.state === 'CAPTURING' && enemy.capturedShip) { console.log("Captured ship rescued!"); if (enemy.capturedShip === capturedPlayer) { capturedPlayer.isCaptured = false; capturedPlayer.x = logicalWidth / 2 - capturedPlayer.width / 2; capturedPlayer.y = logicalHeight - 40 - capturedPlayer.height / 2; player = capturedPlayer; capturedPlayer = null; } enemy.capturedShip = null; if (audioInitialized) specialSynth.triggerAttackRelease("G5", "8n", Tone.now()); }
+                            enemies.splice(j, 1); bullets.splice(i, 1); score += 10; updateHUD(); break;
                         }
                     }
                 }
-
-                // --- Player vs Enemy Collision ---
+                // --- Player vs Enemy ---
                 if (player && !player.isCaptured) {
                     for (let i = enemies.length - 1; i >= 0; i--) {
-                        const enemy = enemies[i];
-                        if (!enemy || enemy.state === 'CAPTURING') continue; // Don't collide with capturing enemies
-
-                        // AABB collision check
-                        if (player.x < enemy.x + enemy.width &&
-                            player.x + player.width > enemy.x &&
-                            player.y < enemy.y + enemy.height &&
-                            player.y + player.height > enemy.y)
-                        {
-                            // Player hit the enemy (or vice versa)
-                            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.baseColor);
-                            enemies.splice(i, 1); // Remove the enemy
-                            player.hit(); // Player takes damage/loses shield
-                            updateHUD();
-                            // No break here, player could potentially hit multiple enemies in one frame
+                        const enemy = enemies[i]; if (!enemy || enemy.state === 'CAPTURING') continue;
+                        if (player.x < enemy.x + enemy.width && player.x + player.width > enemy.x && player.y < enemy.y + enemy.height && player.y + player.height > enemy.y) {
+                            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.baseColor); enemies.splice(i, 1); player.hit(); updateHUD();
                         }
                     }
                 }
-
-                // --- Player vs Tractor Beam Collision ---
+                // --- Player vs Tractor Beam ---
                 if (player && !player.isCaptured) {
                     for (let i = enemies.length - 1; i >= 0; i--) {
-                        const enemy = enemies[i];
-                        if (enemy.isTractorBeamActive) {
-                            const beamBaseY = enemy.y + enemy.height;
-                            const beamTipY = beamBaseY + enemy.tractorBeamLength;
-                            const beamMidX = enemy.x + enemy.width / 2;
-                            // Approximate beam shape as a trapezoid/rectangle for collision
-                            const beamTipXLeft = beamMidX - TRACTOR_BEAM_WIDTH / 2;
-                            const beamTipXRight = beamMidX + TRACTOR_BEAM_WIDTH / 2;
-                            const beamBaseXLeft = enemy.x;
-                            const beamBaseXRight = enemy.x + enemy.width;
-
-                            // Simple check: Player intersects the beam's vertical range AND horizontal range
-                            if (player.y + player.height > beamBaseY && // Player bottom below beam start
-                                player.y < beamTipY &&                 // Player top above beam end
-                                player.x + player.width > beamTipXLeft && // Player right overlaps beam left
-                                player.x < beamTipXRight)                 // Player left overlaps beam right
-                            {
-                                handlePlayerCapture(enemy);
-                                break; // Only one enemy can capture at a time
-                            }
+                        const enemy = enemies[i]; if (enemy.isTractorBeamActive) {
+                            const beamBaseY = enemy.y + enemy.height; const beamTipY = beamBaseY + enemy.tractorBeamLength; const beamMidX = enemy.x + enemy.width / 2; const beamTipXLeft = beamMidX - TRACTOR_BEAM_WIDTH / 2; const beamTipXRight = beamMidX + TRACTOR_BEAM_WIDTH / 2;
+                            if (player.y + player.height > beamBaseY && player.y < beamTipY && player.x + player.width > beamTipXLeft && player.x < beamTipXRight) { handlePlayerCapture(enemy); break; }
                         }
                     }
                 }
-            } // End checkCollisions
+            }
 
             function updateHUD() {
-                scoreDisplay.textContent = `SCORE: ${score}`;
-                livesDisplay.textContent = `LIVES: ${lives}`;
-                waveDisplay.textContent = `WAVE: ${wave}`;
-                // Update Hull and Heat on HUD if player exists
-                if (player) {
-                    hudHullDisplay.textContent = `HULL: ${player.hullIntegrity}%`;
-                    const heatPercent = Math.min(100, Math.floor((player.heat / maxHeat) * 100));
-                    hudHeatDisplay.textContent = `HEAT: ${heatPercent}%`;
-                    hudHeatDisplay.style.color = player.isOverheated ? '#f00' : '#0f0'; // Red when overheated
-                } else {
-                    hudHullDisplay.textContent = `HULL: 0%`;
-                    hudHeatDisplay.textContent = `HEAT: 0%`;
-                    hudHeatDisplay.style.color = '#0f0';
-                }
+                // ... (HUD update logic remains the same) ...
+                 scoreDisplay.textContent = `SCORE: ${score}`; livesDisplay.textContent = `LIVES: ${lives}`; waveDisplay.textContent = `WAVE: ${wave}`; if (player) { hudHullDisplay.textContent = `HULL: ${player.hullIntegrity}%`; const heatPercent = Math.min(100, Math.floor((player.heat / maxHeat) * 100)); hudHeatDisplay.textContent = `HEAT: ${heatPercent}%`; hudHeatDisplay.style.color = player.isOverheated ? '#f00' : '#0f0'; } else { hudHullDisplay.textContent = `HULL: 0%`; hudHeatDisplay.textContent = `HEAT: 0%`; hudHeatDisplay.style.color = '#0f0'; }
             }
 
-            // --- Management Screen Specific Functions ---
-            function updateFocusVisuals() {
-                focusableControls.forEach((control, index) => {
-                    if (index === focusedControlIndex) {
-                        control.classList.add('focused-control');
-                    } else {
-                        control.classList.remove('focused-control');
-                    }
-                });
-            }
+            // --- Management Screen Functions ---
+            function updateFocusVisuals() { /* ... (remains the same) ... */ focusableControls.forEach((control, index) => { if (index === focusedControlIndex) { control.classList.add('focused-control'); } else { control.classList.remove('focused-control'); } }); }
             function showManagementScreen() {
                 gameState = 'MANAGEMENT';
-                canvas.style.display = 'none'; // Hide canvas
-                managementScreen.style.display = 'block'; // Show management
-                updateControlVisibility(); // Hide touch controls
-
-                // Update displays with current player status
-                if (player) {
-                    manHullDisplay.textContent = `HULL: ${player.hullIntegrity}%`;
-                    manHeatDisplay.textContent = `HEAT: ${Math.floor(player.heat)}%`;
-                } else { // Handle case where player is null (e.g., after game over)
-                    manHullDisplay.textContent = `HULL: ---`;
-                    manHeatDisplay.textContent = `HEAT: ---`;
-                }
-                updateHUD(); // Update main HUD too
-
-                // Set sliders to current power levels
-                weaponPowerSlider.value = weaponPower;
-                shieldPowerSlider.value = shieldPower;
-                coolingPowerSlider.value = coolingPower;
-                repairPowerSlider.value = repairPower;
-                // Update text displays for sliders
-                weaponPowerValue.textContent = `${weaponPower}%`;
-                shieldPowerValue.textContent = `${shieldPower}%`;
-                coolingPowerValue.textContent = `${coolingPower}%`;
-                repairPowerValue.textContent = `${repairPower}%`;
-
-                checkPowerAllocation(); // Check initial allocation and enable/disable button
-                focusedControlIndex = 0; // Reset focus to first slider
-                updateFocusVisuals();
-
-                // Stop game music if playing
-                if (audioInitialized && Tone.Transport.state === 'started') {
-                    Tone.Transport.stop();
-                    Tone.Transport.cancel();
-                    console.log("Music stopped (Management)");
-                }
+                canvas.style.display = 'none'; // Hide canvas (important!)
+                managementScreen.style.display = 'block';
+                updateControlVisibility();
+                if (player) { manHullDisplay.textContent = `HULL: ${player.hullIntegrity}%`; manHeatDisplay.textContent = `HEAT: ${Math.floor(player.heat)}%`; } else { manHullDisplay.textContent = `HULL: ---`; manHeatDisplay.textContent = `HEAT: ---`; }
+                updateHUD(); weaponPowerSlider.value = weaponPower; shieldPowerSlider.value = shieldPower; coolingPowerSlider.value = coolingPower; repairPowerSlider.value = repairPower; weaponPowerValue.textContent = `${weaponPower}%`; shieldPowerValue.textContent = `${shieldPower}%`; coolingPowerValue.textContent = `${coolingPower}%`; repairPowerValue.textContent = `${repairPower}%`;
+                checkPowerAllocation(); focusedControlIndex = 0; updateFocusVisuals();
+                if (audioInitialized && Tone.Transport.state === 'started') { Tone.Transport.stop(); Tone.Transport.cancel(); console.log("Music stopped (Management)"); }
             }
-            function checkPowerAllocation() {
-                // Read values directly from sliders
-                const wp = parseInt(weaponPowerSlider.value);
-                const sp = parseInt(shieldPowerSlider.value);
-                const cp = parseInt(coolingPowerSlider.value);
-                const rp = parseInt(repairPowerSlider.value);
-                const totalPower = wp + sp + cp + rp;
-
-                // Update global power variables
-                weaponPower = wp;
-                shieldPower = sp;
-                coolingPower = cp;
-                repairPower = rp;
-
-                // Update text displays next to sliders
-                weaponPowerValue.textContent = `${wp}%`;
-                shieldPowerValue.textContent = `${sp}%`;
-                coolingPowerValue.textContent = `${cp}%`;
-                repairPowerValue.textContent = `${rp}%`;
-
-                // Check limit and update warning/button state
-                const isOverLimit = totalPower > 100;
-                powerWarning.style.display = isOverLimit ? 'block' : 'none';
-                startWaveButton.disabled = isOverLimit;
-                // Style updates handled by CSS :disabled selector now
-
-                return !isOverLimit; // Return true if allocation is valid
-            }
+            function checkPowerAllocation() { /* ... (remains the same) ... */ const wp = parseInt(weaponPowerSlider.value); const sp = parseInt(shieldPowerSlider.value); const cp = parseInt(coolingPowerSlider.value); const rp = parseInt(repairPowerSlider.value); const totalPower = wp + sp + cp + rp; weaponPower = wp; shieldPower = sp; coolingPower = cp; repairPower = rp; weaponPowerValue.textContent = `${wp}%`; shieldPowerValue.textContent = `${sp}%`; coolingPowerValue.textContent = `${cp}%`; repairPowerValue.textContent = `${rp}%`; const isOverLimit = totalPower > 100; powerWarning.style.display = isOverLimit ? 'block' : 'none'; startWaveButton.disabled = isOverLimit; return !isOverLimit; }
 
             // --- Control Visibility ---
             function updateControlVisibility() {
                 if (gameState === 'ACTION') {
-                    touchControlsDiv.style.display = 'flex'; // Use flex to show controls
+                    touchControlsDiv.style.display = 'flex';
                 } else {
-                    touchControlsDiv.style.display = 'none'; // Hide controls
+                    touchControlsDiv.style.display = 'none';
                 }
             }
-
 
             // --- Game Start and Over ---
             function startGame() {
-                // Attempt to initialize audio if not already done (requires user interaction)
-                if (!audioInitialized && typeof Tone !== 'undefined') {
-                    initializeAudio();
-                } else if (typeof Tone === 'undefined') {
-                    console.warn("Tone.js not ready yet, cannot initialize audio.");
-                }
-
-                // --- Apply Repairs Before Starting Wave ---
-                if (player) {
-                    const hullToRepair = Math.floor(repairPower * repairPowerFactor);
-                    player.hullIntegrity = Math.min(maxHullIntegrity, player.hullIntegrity + hullToRepair);
-                    console.log(`Repaired ${hullToRepair} hull. Current: ${player.hullIntegrity}`);
-                }
-                // --- End Apply Repairs ---
+                if (!audioInitialized && typeof Tone !== 'undefined') { initializeAudio(); } else if (typeof Tone === 'undefined') { console.warn("Tone.js not ready yet..."); }
+                if (player) { const hullToRepair = Math.floor(repairPower * repairPowerFactor); player.hullIntegrity = Math.min(maxHullIntegrity, player.hullIntegrity + hullToRepair); console.log(`Repaired ${hullToRepair} hull. Current: ${player.hullIntegrity}`); }
 
                 canvas.style.display = 'block'; // Show canvas
-                managementScreen.style.display = 'none'; // Hide management
+                managementScreen.style.display = 'none';
                 gameState = 'ACTION';
-                updateControlVisibility(); // Show touch controls
-                calculateDifficulty(); // Set difficulty for the upcoming wave
+                resizeCanvas(); // Ensure canvas size is correct before starting
+                updateControlVisibility();
+                calculateDifficulty();
 
-                // Reset player state or create new player if needed
-                if (lives <= 0) { // If game over previously
-                    capturedPlayer = null; // Ensure no lingering captured state
-                    score = 0;
-                    lives = 3;
-                    wave = 1; // Reset wave too? Yes.
-                    calculateDifficulty(); // Recalculate for wave 1
-                    player = new Player(canvas.width / 2 - playerWidth / 2, canvas.height - 40 - playerHeight / 2, playerWidth, playerHeight, '#0f0');
-                } else if (!player) { // If starting for the first time
-                     player = new Player(canvas.width / 2 - playerWidth / 2, canvas.height - 40 - playerHeight / 2, playerWidth, playerHeight, '#0f0');
-                } else { // Continuing from previous wave
-                    player.isCaptured = false; // Ensure not captured
-                    // Reposition player
-                    player.x = canvas.width / 2 - playerWidth / 2;
-                    player.y = canvas.height - 40 - playerHeight / 2;
-                }
+                // Use logical coordinates for player positioning/creation
+                const startX = logicalWidth / 2 - playerWidth / 2;
+                const startY = logicalHeight - 40 - playerHeight / 2;
 
-                // Reset dynamic player stats for the new wave
-                player.heat = 0;
-                player.isOverheated = false;
-                player.updateMaxHits(); // Update max shields based on power allocation
-                player.currentHits = player.maxHits; // Reset current shields to max
+                if (lives <= 0) { capturedPlayer = null; score = 0; lives = 3; wave = 1; calculateDifficulty(); player = new Player(startX, startY, playerWidth, playerHeight, '#0f0'); }
+                else if (!player) { player = new Player(startX, startY, playerWidth, playerHeight, '#0f0'); }
+                else { player.isCaptured = false; player.x = startX; player.y = startY; }
 
-                // Clear game objects
-                bullets = [];
-                particles = [];
-                enemies = [];
-                spawnEnemies(); // Spawn enemies for the new wave
-                updateHUD(); // Update display
+                player.heat = 0; player.isOverheated = false; player.updateMaxHits(); player.currentHits = player.maxHits;
+                bullets = []; particles = []; enemies = []; spawnEnemies(); updateHUD();
 
-                // Start game music if initialized and not already playing
-                if (audioInitialized && Tone.Transport.state !== 'started') {
-                    Tone.Transport.start();
-                    console.log("Music started");
-                }
-                // Play start wave jingle
-                if (audioInitialized) {
-                    const now = Tone.now();
-                    specialSynth.triggerAttackRelease("C4", "8n", now + 0.1);
-                    specialSynth.triggerAttackRelease("E4", "8n", now + 0.2);
-                    specialSynth.triggerAttackRelease("G4", "8n", now + 0.3);
-                }
+                if (audioInitialized && Tone.Transport.state !== 'started') { Tone.Transport.start(); console.log("Music started"); }
+                if (audioInitialized) { const now = Tone.now(); specialSynth.triggerAttackRelease("C4", "8n", now + 0.1); specialSynth.triggerAttackRelease("E4", "8n", now + 0.2); specialSynth.triggerAttackRelease("G4", "8n", now + 0.3); }
 
-                gameLoop(); // Start the animation loop
+                // Ensure the loop starts only once
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                animationFrameId = requestAnimationFrame(gameLoop);
             }
             function gameOver() {
-                // Draw Game Over screen
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Semi-transparent overlay
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Clear canvas before drawing game over screen
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; // Darker overlay
+                ctx.fillRect(0, 0, canvas.width, canvas.height); // Use physical dimensions
 
-                ctx.fillStyle = '#f00'; // Red text
-                ctx.font = '40px "Courier New", Courier, monospace';
+                // --- Apply Scaling for Text ---
+                ctx.save();
+                ctx.scale(scaleX, scaleY);
+
+                // --- Draw Text using Logical Coordinates ---
+                const logicalCenterX = logicalWidth / 2;
+                const logicalCenterY = logicalHeight / 2;
+                ctx.fillStyle = '#f00';
+                ctx.font = '40px "Courier New", Courier, monospace'; // Font size in logical pixels
                 ctx.textAlign = 'center';
-                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 40);
+                ctx.fillText('GAME OVER', logicalCenterX, logicalCenterY - 40);
 
                 ctx.font = '20px "Courier New", Courier, monospace';
-                ctx.fillText(`FINAL SCORE: ${score}`, canvas.width / 2, canvas.height / 2 + 0);
+                ctx.fillText(`FINAL SCORE: ${score}`, logicalCenterX, logicalCenterY + 0);
 
-                ctx.fillStyle = '#ff0'; // Yellow text
-                ctx.fillText('Press Enter or Tap Screen', canvas.width / 2, canvas.height / 2 + 40);
-                ctx.fillText('to Play Again', canvas.width / 2, canvas.height / 2 + 65);
+                ctx.fillStyle = '#ff0';
+                ctx.fillText('Tap Screen or Press Enter', logicalCenterX, logicalCenterY + 40); // Updated text
+                ctx.fillText('to Play Again', logicalCenterX, logicalCenterY + 65);
 
+                // --- Restore Context ---
+                ctx.restore();
 
-                // Ensure music is stopped
-                if (audioInitialized && Tone.Transport.state === 'started') {
-                    Tone.Transport.stop();
-                    Tone.Transport.cancel();
-                    console.log("Music stopped (Game Over - Failsafe)");
-                }
-                updateControlVisibility(); // Ensure touch controls are hidden
+                if (audioInitialized && Tone.Transport.state === 'started') { Tone.Transport.stop(); Tone.Transport.cancel(); console.log("Music stopped (Game Over - Failsafe)"); }
+                updateControlVisibility();
             }
 
             // --- Event Listeners ---
+            // ... (Management slider/button listeners remain the same) ...
+             weaponPowerSlider.addEventListener('input', () => { focusedControlIndex = 0; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); }); shieldPowerSlider.addEventListener('input', () => { focusedControlIndex = 1; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); }); coolingPowerSlider.addEventListener('input', () => { focusedControlIndex = 2; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); }); repairPowerSlider.addEventListener('input', () => { focusedControlIndex = 3; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); }); startWaveButton.addEventListener('click', () => { if (checkPowerAllocation()) { if (!audioInitialized) initializeAudio(); startGame(); } });
 
-            // Management Screen Sliders (Input event for real-time update)
-            weaponPowerSlider.addEventListener('input', () => { focusedControlIndex = 0; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); });
-            shieldPowerSlider.addEventListener('input', () => { focusedControlIndex = 1; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); });
-            coolingPowerSlider.addEventListener('input', () => { focusedControlIndex = 2; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); });
-            repairPowerSlider.addEventListener('input', () => { focusedControlIndex = 3; updateFocusVisuals(); checkPowerAllocation(); if (audioInitialized) uiSynth.triggerAttackRelease("A5", "32n", Tone.now()); });
+            // --- Touch / Pointer Listeners ---
+            function handlePointerDown(event) { /* ... (remains the same) ... */ if (!audioInitialized) initializeAudio(); event.preventDefault(); const target = event.target; if (target === touchLeftButton) touchLeftActive = true; else if (target === touchRightButton) touchRightActive = true; else if (target === touchFireButton) touchFireActive = true; else if (gameState === 'GAMEOVER') { showManagementScreen(); } }
+            function handlePointerUp(event) { /* ... (remains the same) ... */ event.preventDefault(); const target = event.target; if (target === touchLeftButton) touchLeftActive = false; else if (target === touchRightButton) touchRightActive = false; else if (target === touchFireButton) touchFireActive = false; }
+            function handlePointerLeave(event) { /* ... (remains the same) ... */ event.preventDefault(); const target = event.target; if (target === touchLeftButton) touchLeftActive = false; else if (target === touchRightButton) touchRightActive = false; else if (target === touchFireButton) touchFireActive = false; }
 
-            // Management Screen Start Button (Click)
-            startWaveButton.addEventListener('click', () => {
-                if (checkPowerAllocation()) {
-                     // Try initializing audio on first "start" click if not already done
-                    if (!audioInitialized) initializeAudio();
-                    startGame();
-                }
-            });
+            touchLeftButton.addEventListener('pointerdown', handlePointerDown); touchRightButton.addEventListener('pointerdown', handlePointerDown); touchFireButton.addEventListener('pointerdown', handlePointerDown);
+            touchLeftButton.addEventListener('pointerup', handlePointerUp); touchRightButton.addEventListener('pointerup', handlePointerUp); touchFireButton.addEventListener('pointerup', handlePointerUp);
+            touchLeftButton.addEventListener('pointerleave', handlePointerLeave); touchRightButton.addEventListener('pointerleave', handlePointerLeave); touchFireButton.addEventListener('pointerleave', handlePointerLeave);
 
-            // --- Touch Control Listeners ---
-            // Use pointer events for better compatibility across touch/mouse
-            function handlePointerDown(event) {
-                 // Try initializing audio on first touch if not already done
-                if (!audioInitialized) initializeAudio();
-
-                // Prevent default actions like scrolling or text selection
-                event.preventDefault();
-                const target = event.target;
-                if (target === touchLeftButton) touchLeftActive = true;
-                else if (target === touchRightButton) touchRightActive = true;
-                else if (target === touchFireButton) touchFireActive = true;
-                 // Restart game on tap during game over
-                else if (gameState === 'GAMEOVER') {
-                    showManagementScreen(); // Go back to management to restart
-                }
-            }
-
-            function handlePointerUp(event) {
-                event.preventDefault();
-                const target = event.target;
-                if (target === touchLeftButton) touchLeftActive = false;
-                else if (target === touchRightButton) touchRightActive = false;
-                else if (target === touchFireButton) touchFireActive = false;
-            }
-
-             function handlePointerLeave(event) {
-                 // If the pointer leaves the button area, consider it released
-                event.preventDefault();
-                const target = event.target;
-                 if (target === touchLeftButton) touchLeftActive = false;
-                 else if (target === touchRightButton) touchRightActive = false;
-                 else if (target === touchFireButton) touchFireActive = false;
-             }
-
-            // Attach pointer listeners to the touch control buttons
-            touchLeftButton.addEventListener('pointerdown', handlePointerDown);
-            touchRightButton.addEventListener('pointerdown', handlePointerDown);
-            touchFireButton.addEventListener('pointerdown', handlePointerDown);
-
-            touchLeftButton.addEventListener('pointerup', handlePointerUp);
-            touchRightButton.addEventListener('pointerup', handlePointerUp);
-            touchFireButton.addEventListener('pointerup', handlePointerUp);
-
-            // Add pointerleave to handle cases where the finger slides off
-            touchLeftButton.addEventListener('pointerleave', handlePointerLeave);
-            touchRightButton.addEventListener('pointerleave', handlePointerLeave);
-            touchFireButton.addEventListener('pointerleave', handlePointerLeave);
-
-             // Add a listener to the canvas or body for restarting on tap during game over
+            // Listener for restarting on tap during game over
              document.body.addEventListener('pointerdown', (event) => {
-                 // Only trigger restart if game is over and the tap wasn't on a control button
-                 if (gameState === 'GAMEOVER' && event.target !== touchLeftButton && event.target !== touchRightButton && event.target !== touchFireButton) {
-                      if (!audioInitialized) initializeAudio(); // Init audio if needed
+                 if (gameState === 'GAMEOVER' && event.target !== touchLeftButton && event.target !== touchRightButton && event.target !== touchFireButton && event.target !== startWaveButton) { // Avoid triggering on buttons
+                      if (!audioInitialized) initializeAudio();
                       showManagementScreen();
                  }
-             }, true); // Use capture phase to potentially catch taps sooner
+             }, true);
 
-
-            // --- Keyboard Listeners (Kept for Desktop/Debugging) ---
-            window.addEventListener('keydown', (e) => {
-                // Allow keyboard controls only if player exists and is not captured
-                if (player && !player.isCaptured) {
-                    keys[e.key] = true;
-                } else {
-                    // Ensure movement/fire keys are false if player is captured/null
-                    keys['ArrowLeft'] = false;
-                    keys['ArrowRight'] = false;
-                    keys[' '] = false;
-                }
-
-                if (gameState === 'ACTION') {
-                    if (e.key === ' ') e.preventDefault(); // Prevent spacebar scrolling
-                }
-                else if (gameState === 'MANAGEMENT') {
-                    // Keyboard navigation for management screen
-                    e.preventDefault(); // Prevent default browser actions for arrows/enter
-                    let handled = false;
-                    let playUISound = false;
-                    const sliderCount = 4;
-                    const buttonIndex = sliderCount;
-
-                    switch (e.key) {
-                        case 'ArrowUp':
-                            focusedControlIndex = (focusedControlIndex - 1 + focusableControls.length) % focusableControls.length;
-                            handled = true; playUISound = true;
-                            break;
-                        case 'ArrowDown':
-                            focusedControlIndex = (focusedControlIndex + 1) % focusableControls.length;
-                            handled = true; playUISound = true;
-                            break;
-                        case 'ArrowLeft':
-                            if (focusedControlIndex < sliderCount) { // If focus is on a slider
-                                const slider = focusableControls[focusedControlIndex];
-                                slider.value = Math.max(parseInt(slider.min), parseInt(slider.value) - sliderStep);
-                                checkPowerAllocation(); // Update values and check limit
-                                handled = true; playUISound = true;
-                            }
-                            break;
-                        case 'ArrowRight':
-                             if (focusedControlIndex < sliderCount) { // If focus is on a slider
-                                const slider = focusableControls[focusedControlIndex];
-                                slider.value = Math.min(parseInt(slider.max), parseInt(slider.value) + sliderStep);
-                                checkPowerAllocation(); // Update values and check limit
-                                handled = true; playUISound = true;
-                            }
-                            break;
-                        case 'Enter':
-                            if (focusedControlIndex === buttonIndex && checkPowerAllocation()) { // If focus is on button and power is valid
-                                 if (!audioInitialized) initializeAudio(); // Init audio if needed
-                                startGame();
-                                handled = true;
-                            } else if (focusedControlIndex < sliderCount) {
-                                // Optional: Allow Enter to focus the button from a slider?
-                                // focusedControlIndex = buttonIndex;
-                                // handled = true; playUISound = true;
-                            }
-                            break;
-                    }
-                    if (handled && playUISound && audioInitialized) {
-                        uiSynth.triggerAttackRelease(focusedControlIndex === buttonIndex ? "C6" : "A5", "32n", Tone.now());
-                    }
-                    if (handled) { // Update visual focus if navigation occurred
-                        updateFocusVisuals();
-                    }
-                } else if (gameState === 'GAMEOVER') {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                         if (!audioInitialized) initializeAudio(); // Init audio if needed
-                        showManagementScreen(); // Go back to management screen to restart
-                    }
-                }
-            });
-
-            window.addEventListener('keyup', (e) => {
-                keys[e.key] = false; // Reset key state on keyup
-            });
+            // --- Keyboard Listeners ---
+            window.addEventListener('keydown', (e) => { /* ... (remains largely the same, ensures Enter calls startGame/showManagementScreen) ... */
+                 if (player && !player.isCaptured) { keys[e.key] = true; } else { keys['ArrowLeft'] = false; keys['ArrowRight'] = false; keys[' '] = false; }
+                 if (gameState === 'ACTION') { if (e.key === ' ') e.preventDefault(); }
+                 else if (gameState === 'MANAGEMENT') { e.preventDefault(); let handled = false; let playUISound = false; const sliderCount = 4; const buttonIndex = sliderCount; switch (e.key) { case 'ArrowUp': focusedControlIndex = (focusedControlIndex - 1 + focusableControls.length) % focusableControls.length; handled = true; playUISound = true; break; case 'ArrowDown': focusedControlIndex = (focusedControlIndex + 1) % focusableControls.length; handled = true; playUISound = true; break; case 'ArrowLeft': if (focusedControlIndex < sliderCount) { const slider = focusableControls[focusedControlIndex]; slider.value = Math.max(parseInt(slider.min), parseInt(slider.value) - sliderStep); checkPowerAllocation(); handled = true; playUISound = true; } break; case 'ArrowRight': if (focusedControlIndex < sliderCount) { const slider = focusableControls[focusedControlIndex]; slider.value = Math.min(parseInt(slider.max), parseInt(slider.value) + sliderStep); checkPowerAllocation(); handled = true; playUISound = true; } break; case 'Enter': if (focusedControlIndex === buttonIndex && checkPowerAllocation()) { if (!audioInitialized) initializeAudio(); startGame(); handled = true; } break; } if (handled && playUISound && audioInitialized) { uiSynth.triggerAttackRelease(focusedControlIndex === buttonIndex ? "C6" : "A5", "32n", Tone.now()); } if (handled) { updateFocusVisuals(); } }
+                 else if (gameState === 'GAMEOVER') { if (e.key === 'Enter') { e.preventDefault(); if (!audioInitialized) initializeAudio(); showManagementScreen(); } }
+             });
+            window.addEventListener('keyup', (e) => { keys[e.key] = false; });
 
             // --- Game Loop ---
-            let lastTimestamp = 0;
+            let animationFrameId = null; // To keep track of the animation frame request
             function gameLoop(timestamp) {
-                // Optional: Calculate delta time for frame-rate independent physics (more complex)
-                // const deltaTime = (timestamp - lastTimestamp) / 1000; // Time in seconds
-                // lastTimestamp = timestamp;
-
                 if (gameState === 'ACTION') {
                     updateGameObjects();
                     drawGameObjects();
-                    requestAnimationFrame(gameLoop); // Continue the loop
+                    animationFrameId = requestAnimationFrame(gameLoop); // Continue the loop
                 } else if (gameState === 'GAMEOVER') {
-                    gameOver(); // Draw the game over screen (no update needed)
-                    // Stop requesting frames in GAMEOVER state until restart
+                    gameOver();
+                    animationFrameId = null; // Stop requesting frames
+                } else {
+                    animationFrameId = null; // Stop if in MANAGEMENT state
                 }
-                // No requestAnimationFrame if in MANAGEMENT state
             }
 
-            // --- Initial Setup ---
-            showManagementScreen(); // Start in the management screen
-
-            // --- Responsive Canvas Handling ---
+            // --- Resize Handling ---
              function resizeCanvas() {
-                 const container = document.getElementById('game-container');
-                 const containerWidth = container.clientWidth;
-                 // Maintain aspect ratio 600:400
-                 const newHeight = containerWidth * (400 / 600);
-                 container.style.height = `${newHeight}px`;
+                 // Get the actual display size of the container
+                 const displayWidth = gameContainer.clientWidth;
+                 const displayHeight = gameContainer.clientHeight;
 
-                 // You might need to adjust internal game scaling if you want elements
-                 // to resize within the canvas, but for now, this keeps the container
-                 // responsive while the canvas content remains at 600x400 logical pixels.
+                 // Set the canvas drawing buffer size to match the display size
+                 canvas.width = displayWidth;
+                 canvas.height = displayHeight;
+
+                 // Calculate scaling factors to map logical size (600x400) to physical size
+                 scaleX = canvas.width / logicalWidth;
+                 scaleY = canvas.height / logicalHeight;
+
+                 // Redraw the current state if the game is active or over
+                 if (gameState === 'ACTION') {
+                     drawGameObjects();
+                 } else if (gameState === 'GAMEOVER') {
+                     gameOver();
+                 }
+                 console.log(`Resized canvas to: ${canvas.width}x${canvas.height}, Scale: ${scaleX.toFixed(2)}x${scaleY.toFixed(2)}`);
              }
 
              window.addEventListener('resize', resizeCanvas);
-             resizeCanvas(); // Initial resize
 
+
+            // --- Initial Setup ---
+            showManagementScreen(); // Start in management
+            resizeCanvas(); // Initial resize to set canvas size
 
         }); // End of DOMContentLoaded listener
     </script>
