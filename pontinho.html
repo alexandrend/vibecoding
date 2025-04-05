@@ -3,165 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dots and Boxes (2-4 Players) - Full Screen 20x20</title>
+    <title>Dots and Boxes (2-4 Players) - 15x15 Fullscreen</title>
     <style>
-        /* Basic Reset & Full Viewport */
+        /* Basic Reset & Fullscreen */
         html, body {
             height: 100%; /* Make html and body take full height */
             margin: 0;
-            padding: 0;
-            overflow: hidden; /* Prevent scrollbars */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #fdfdfd;
-            background-image:
-                linear-gradient(#e0e0ff 1px, transparent 1px),
-                linear-gradient(90deg, #ffdddd 1px, transparent 1px);
-            background-size: 25px 25px, 50px 25px;
-            background-position: 0 0, 50px 0;
+            overflow: hidden; /* Prevent scrollbars if content fits */
         }
-
         body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* justify-content: center; Vertically center setup screen */
-            /* Let game container push content */
+            justify-content: center; /* Center content vertically */
+            min-height: 100%; /* Ensure body takes at least full height */
+            background-color: #fdfdfd; /* Slightly off-white paper color */
+            /* Notebook paper effect */
+            background-image:
+                linear-gradient(#e0e0ff 1px, transparent 1px), /* Light blue horizontal lines */
+                linear-gradient(90deg, #ffdddd 1px, transparent 1px); /* Light red vertical margin line */
+            background-size: 25px 25px, 50px 25px; /* Line spacing */
+            background-position: 0 0, 50px 0; /* Margin line position */
+            padding: 10px; /* Add small padding around content */
+            box-sizing: border-box;
         }
 
-        /* Hide H1 when game is active */
-        body.game-active > h1 {
-            display: none;
-        }
-
-        h1 {
-            margin: 15px 0; /* Adjust margin */
-            color: #444;
-            text-align: center;
-            flex-shrink: 0; /* Prevent title from shrinking */
-        }
-
-        /* Setup Container - Keep centered, don't expand fully */
+        /* Setup Container */
         #setup-container {
             background-color: rgba(253, 253, 253, 0.95);
             padding: 25px;
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            margin-top: 20px; /* Add some margin when centered */
             margin-bottom: 20px;
-            display: flex;
+            display: flex; /* Use flexbox for layout */
             flex-direction: column;
-            align-items: center;
-            width: 90%;
-            max-width: 450px;
-            flex-shrink: 0; /* Prevent setup from shrinking */
+            align-items: center; /* Center items horizontally */
+            width: 90%; /* Take up most of width */
+            /* max-width: 450px; /* <<< REMOVED max-width */
         }
-        #setup-container h2 { margin-top: 0; margin-bottom: 20px; color: #333; }
-        .setup-section { margin-bottom: 15px; width: 100%; display: flex; flex-direction: column; align-items: flex-start; }
-        .setup-section label { margin-bottom: 5px; font-weight: bold; color: #555; }
-        .setup-section input[type="text"], .setup-section select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
-        .player-name-inputs label { display: block; margin-bottom: 5px; }
-        .player-name-inputs input { margin-bottom: 10px; }
-        #start-game-button { margin-top: 15px; padding: 12px 25px; font-size: 1.1em; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
-        #start-game-button:hover { background-color: #0056b3; }
+        #setup-container h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .setup-section {
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 400px; /* Limit width of inputs */
+            display: flex;
+            flex-direction: column; /* Stack label and input */
+            align-items: flex-start; /* Align labels to the left */
+        }
+        .setup-section label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .setup-section input[type="text"],
+        .setup-section select {
+            width: 100%; /* Make input/select take full width */
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding in width */
+            font-size: 1em;
+        }
+        .player-name-inputs label {
+             display: block; /* Ensure labels are on their own line */
+             margin-bottom: 5px;
+        }
+         .player-name-inputs input {
+             margin-bottom: 10px; /* Space between player name inputs */
+         }
+
+        #start-game-button {
+            margin-top: 15px;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            background-color: #007bff; /* Blue */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #start-game-button:hover {
+            background-color: #0056b3; /* Darker blue */
+        }
 
 
-        /* Game Container - Expand to fill space */
+        /* Game Container (Initially Hidden) */
         #game-container {
-            display: none; /* Initially hidden */
+            display: none; /* Hide initially, show after setup */
             flex-direction: column;
             align-items: center;
-            justify-content: center; /* Center content vertically */
-            background-color: rgba(253, 253, 253, 0.9);
-            padding: 10px; /* Reduced padding */
+            background-color: rgba(253, 253, 253, 0.9); /* Slightly transparent background to see lines through */
+            padding: 15px; /* Slightly reduced padding */
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            width: 100%; /* Take full width */
-            flex-grow: 1; /* Take available vertical space */
+            width: 95%; /* Take up most of width */
+            height: 95%; /* Take up most of height */
             box-sizing: border-box;
-            overflow: hidden; /* Prevent internal scroll */
-            max-height: 100vh; /* Ensure it doesn't exceed viewport */
+            /* max-width: 450px; /* <<< REMOVED max-width */
         }
 
         /* Scoreboard and Turn Info */
         .info-area {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center; /* Center scores */
-            gap: 10px; /* Add gap between player infos */
-            width: 95%; /* Use most of the width */
-            max-width: 600px; /* Increase max width */
-            margin-bottom: 10px; /* Space below scores */
-            font-size: 0.9em; /* Adjust if needed */
+            flex-wrap: wrap; /* Allow wrapping */
+            justify-content: center; /* Center items */
+            gap: 10px; /* Add gap between items */
+            width: 100%;
+            margin-bottom: 10px; /* Reduced margin */
+            font-size: 1em;
             font-weight: bold;
-            flex-shrink: 0; /* Prevent shrinking */
         }
+
         .player-info {
-            padding: 4px 8px;
+            padding: 5px 10px;
+            margin: 0; /* Remove margin, use gap */
             border-radius: 5px;
             transition: background-color 0.3s ease;
-            /* flex-basis removed for centering */
+            /* flex-basis: 45%; /* Let flex wrap handle sizing */
             text-align: center;
-            background-color: rgba(255, 255, 255, 0.5); /* Slight background */
         }
-        .player-info.active { background-color: rgba(255, 255, 0, 0.6); box-shadow: 0 0 5px rgba(255, 255, 0, 0.7); }
-         #player1-info { color: #007bff; } #player2-info { color: #dc3545; } #player3-info { color: #28a745; } #player4-info { color: #6f42c1; }
+
+        .player-info.active {
+             background-color: rgba(255, 255, 0, 0.6);
+             box-shadow: 0 0 5px rgba(255, 255, 0, 0.7);
+        }
+
+        /* Player specific colors */
+         #player1-info { color: #007bff; }
+         #player2-info { color: #dc3545; }
+         #player3-info { color: #28a745; }
+         #player4-info { color: #6f42c1; }
 
         #message-area {
-            margin-bottom: 10px; /* Space below message */
+            margin-top: 5px; /* Reduced margin */
+            margin-bottom: 10px; /* Reduced margin */
             font-size: 1em;
             font-weight: bold;
             min-height: 1.2em;
             text-align: center;
             color: #333;
             width: 100%;
-            flex-shrink: 0; /* Prevent shrinking */
         }
 
-        /* SVG Game Board - Scale within container */
+        /* SVG Game Board */
         #game-board {
             background-color: transparent;
             border-radius: 5px;
             box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
-            /* Make SVG responsive, square, and fit available space */
-            width: auto; /* Let height dictate width via aspect ratio */
-            height: auto;
-            max-width: 95%; /* Limit width relative to container */
-            max-height: calc(95vh - 150px); /* Approximate height minus UI elements */
-            aspect-ratio: 1 / 1; /* Keep it square */
-            flex-shrink: 1; /* Allow shrinking if needed */
-            margin-bottom: 10px; /* Space below board */
+            /* <<< SIZE CONTROLLED BY CSS */
+            width: 85vmin; /* Use viewport smaller dimension */
+            height: 85vmin;
+            max-width: 90%; /* Max width relative to container */
+            max-height: calc(80vh - 60px); /* Max height relative to viewport, accounting for info/message areas */
+            aspect-ratio: 1 / 1; /* Maintain square shape */
         }
 
         /* Dots */
         .dot { fill: #555; }
 
         /* Clickable Line Areas */
-        .line-clickable { fill: transparent; cursor: pointer; transition: fill 0.2s ease; }
+        .line-clickable {
+            fill: transparent;
+            cursor: pointer;
+            transition: fill 0.2s ease;
+        }
         .line-clickable:hover { fill: rgba(0, 0, 0, 0.1); }
 
         /* Drawn Lines */
         .line-drawn {
-            stroke-width: 5px; /* <<< RE-ADJUSTED for larger board */
-            stroke-linecap: round; pointer-events: none;
+            stroke-width: 5px; /* <<< ADJUSTED for 15x15 grid */
+            stroke-linecap: round;
+            pointer-events: none;
         }
-        .line-player-1 { stroke: #007bff; } .line-player-2 { stroke: #dc3545; } .line-player-3 { stroke: #28a745; } .line-player-4 { stroke: #6f42c1; }
+        .line-player-1 { stroke: #007bff; }
+        .line-player-2 { stroke: #dc3545; }
+        .line-player-3 { stroke: #28a745; }
+        .line-player-4 { stroke: #6f42c1; }
 
         /* Completed Boxes */
-        .box-filled { fill-opacity: 0.4; stroke: none; pointer-events: none; }
-        .box-player-1 { fill: #007bff; } .box-player-2 { fill: #dc3545; } .box-player-3 { fill: #28a745; } .box-player-4 { fill: #6f42c1; }
+        .box-filled {
+            fill-opacity: 0.4;
+            stroke: none;
+            pointer-events: none;
+        }
+        .box-player-1 { fill: #007bff; }
+        .box-player-2 { fill: #dc3545; }
+        .box-player-3 { fill: #28a745; }
+        .box-player-4 { fill: #6f42c1; }
 
         /* Player Initial/Number inside Box */
         .box-text {
-            font-size: 14px; /* <<< RE-ADJUSTED for larger board */
-            font-weight: bold; fill-opacity: 0.9; text-anchor: middle; dominant-baseline: central; pointer-events: none; fill: #fff;
+            font-size: 16px; /* <<< ADJUSTED for 15x15 grid */
+            font-weight: bold;
+            fill-opacity: 0.9;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+            fill: #fff;
         }
 
         /* Reset Button */
         #reset-button {
-            padding: 8px 15px; /* Slightly smaller button */
+            margin-top: 10px; /* Reduced margin */
+            padding: 8px 16px; /* Slightly smaller button */
             font-size: 0.9em;
-            font-weight: bold; color: white; background-color: #6c757d; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
-            flex-shrink: 0; /* Prevent shrinking */
+            font-weight: bold;
+            color: white;
+            background-color: #6c757d; /* Grey */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
         }
         #reset-button:hover { background-color: #5a6268; }
 
@@ -202,10 +261,10 @@
 
     <script>
         // --- Game Configuration ---
-        const GRID_SIZE = 20;
-        const DOT_RADIUS = 4; // <<< RE-ADJUSTED for larger physical size
-        const LINE_CLICK_WIDTH = 12; // <<< RE-ADJUSTED for larger physical size
-        const BOARD_PADDING = 25; // <<< RE-ADJUSTED
+        const GRID_SIZE = 15; // <<< ADJUSTED: 15x15 dots grid (creates 14x14 boxes)
+        const DOT_RADIUS = 4; // <<< ADJUSTED for 15x15 grid
+        const LINE_CLICK_WIDTH = 12; // <<< ADJUSTED for 15x15 grid
+        const BOARD_PADDING = 25; // <<< ADJUSTED for 15x15 grid
         const PLAYER_COLORS = ['#007bff', '#dc3545', '#28a745', '#6f42c1'];
 
         // --- Game State Variables ---
@@ -225,7 +284,6 @@
 
         function showSetupScreen() {
             if (!setupContainer || !gameContainer) { console.error("Setup/Game container not found!"); return; }
-            document.body.classList.remove('game-active'); // Remove class for setup screen
             setupContainer.style.display = 'flex';
             gameContainer.style.display = 'none';
             if (numPlayersSelect) {
@@ -255,11 +313,9 @@
 
             if (names.some(name => name.length === 0)) { alert("Please enter names for all selected players."); return; }
 
-            document.body.classList.add('game-active'); // Add class for game screen
             setupContainer.style.display = 'none';
             gameContainer.style.display = 'flex';
-            // Delay initGame slightly to allow container to become visible for size calculation
-            requestAnimationFrame(() => initGame(selectedNum, names));
+            initGame(selectedNum, names);
         }
 
         function initGame(numPlayers, playerNames) {
@@ -268,32 +324,19 @@
             infoArea.innerHTML = '';
             numActivePlayers = numPlayers;
 
-            // --- SVG Size Calculation ---
-            // Use the actual rendered size of the SVG element for calculations
-            const svgRect = svgBoard.getBoundingClientRect();
-            boardWidth = svgRect.width;
-            boardHeight = svgRect.height; // Should be same as width due to aspect-ratio
-
-             // Fallback if size is still 0 (e.g., hidden parent)
+            // Calculate dimensions based on current SVG size (controlled by CSS now)
+            boardWidth = svgBoard.clientWidth;
+            boardHeight = svgBoard.clientHeight;
+             // Fallback if SVG size isn't immediately available (less likely now)
              if (boardWidth === 0 || boardHeight === 0) {
-                 console.warn("SVG size calculation failed, using fallback.");
-                 // Estimate based on viewport, maintaining aspect ratio
-                 const availableWidth = window.innerWidth * 0.9; // Approx 90% width
-                 const availableHeight = (window.innerHeight - 150) * 0.9; // Approx height minus UI * 90%
-                 boardWidth = boardHeight = Math.min(availableWidth, availableHeight);
-                 // Apply this size to SVG element if needed? No, CSS handles display size.
-                 // We just need it for internal calculations.
+                 // Estimate based on common aspect ratios or default
+                 boardWidth = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.8);
+                 boardHeight = boardWidth; // Keep it square
+                 console.warn("SVG dimensions not ready, estimating...");
              }
-
-             // Update viewBox to calculated size for scaling internal coordinates
-             // Use a consistent internal coordinate system (e.g., 400x400)
-             const internalViewBoxSize = 400;
-             svgBoard.setAttribute('viewBox', `0 0 ${internalViewBoxSize} ${internalViewBoxSize}`);
-
-             // Calculate cell dimensions based on the *internal coordinate system*
-             cellWidth = (internalViewBoxSize - 2 * BOARD_PADDING) / (GRID_SIZE - 1);
-             cellHeight = (internalViewBoxSize - 2 * BOARD_PADDING) / (GRID_SIZE - 1);
-
+            // Calculate cell dimensions based on the NEW GRID_SIZE and padding
+            cellWidth = (boardWidth - 2 * BOARD_PADDING) / (GRID_SIZE - 1);
+            cellHeight = (boardHeight - 2 * BOARD_PADDING) / (GRID_SIZE - 1);
 
             players = [];
             for (let i = 0; i < numActivePlayers; i++) {
@@ -308,16 +351,16 @@
 
             currentPlayerIndex = 0;
             gameOver = false;
+            // Initialize state arrays based on the NEW GRID_SIZE
             horizontalLines = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE - 1).fill(-1));
             verticalLines = Array(GRID_SIZE - 1).fill(null).map(() => Array(GRID_SIZE).fill(-1));
             boxes = Array(GRID_SIZE - 1).fill(null).map(() => Array(GRID_SIZE - 1).fill(-1));
+            // Calculate total lines based on the NEW GRID_SIZE
             remainingLines = (GRID_SIZE * (GRID_SIZE - 1)) + ((GRID_SIZE - 1) * GRID_SIZE);
 
-            drawGrid(); // Uses internal coordinates now
+            drawGrid(); // Will now use the new GRID_SIZE and calculated cell dimensions
             updateUI();
             console.log(`Game Initialized for ${numActivePlayers} players on a ${GRID_SIZE}x${GRID_SIZE} grid`);
-            console.log(`SVG display size: ${svgRect.width}x${svgRect.height}, ViewBox: 0 0 ${internalViewBoxSize} ${internalViewBoxSize}`);
-            console.log(`Internal cell size: ${cellWidth}x${cellHeight}`);
         }
 
         function drawGrid() {
@@ -328,15 +371,17 @@
             linesGroup.id = 'lines-group';
             boxesGroup.id = 'boxes-group';
 
-            // Calculations use internal cellWidth/cellHeight based on viewBox
+            // Loop limits now use the new GRID_SIZE
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
+                    // Calculations use the new cellWidth/cellHeight and BOARD_PADDING
                     const x = BOARD_PADDING + c * cellWidth;
                     const y = BOARD_PADDING + r * cellHeight;
+                    // Dot radius uses the new DOT_RADIUS constant
                     const dot = createSvgElement('circle', { cx: x, cy: y, r: DOT_RADIUS, class: 'dot' });
                     dotsGroup.appendChild(dot);
+                    // Horizontal line clickable area (uses new constants)
                     if (c < GRID_SIZE - 1) {
-                        // Clickable area dimensions use internal cellWidth/cellHeight
                         const hLine = createSvgElement('rect', {
                             x: x + DOT_RADIUS, y: y - LINE_CLICK_WIDTH / 2,
                             width: cellWidth - 2 * DOT_RADIUS, height: LINE_CLICK_WIDTH,
@@ -345,6 +390,7 @@
                         hLine.addEventListener('click', handleLineClick);
                         linesGroup.appendChild(hLine);
                     }
+                    // Vertical line clickable area (uses new constants)
                     if (r < GRID_SIZE - 1) {
                         const vLine = createSvgElement('rect', {
                             x: x - LINE_CLICK_WIDTH / 2, y: y + DOT_RADIUS,
@@ -364,4 +410,181 @@
         function createSvgElement(tag, attributes) {
             const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
             for (const key in attributes) { element.setAttribute(key, attributes[key]); }
-            return elem
+            return element;
+        }
+
+        function drawVisibleLine(r, c, orientation) {
+            const x1 = BOARD_PADDING + c * cellWidth;
+            const y1 = BOARD_PADDING + r * cellHeight;
+            let x2, y2;
+            if (orientation === 'h') { x2 = x1 + cellWidth; y2 = y1; }
+            else { x2 = x1; y2 = y1 + cellHeight; }
+            const line = createSvgElement('line', { x1: x1, y1: y1, x2: x2, y2: y2, class: `line-drawn line-player-${currentPlayerIndex + 1}` });
+            const linesGroup = document.getElementById('lines-group');
+            if(linesGroup) linesGroup.insertBefore(line, linesGroup.firstChild);
+             else console.error("Lines group not found for drawing line!");
+        }
+
+        function fillBox(r, c, playerIndex) {
+             const x = BOARD_PADDING + c * cellWidth;
+             const y = BOARD_PADDING + r * cellHeight;
+             const player = players[playerIndex];
+             const boxRect = createSvgElement('rect', { x: x, y: y, width: cellWidth, height: cellHeight, class: `box-filled box-player-${playerIndex + 1}` });
+             const boxText = createSvgElement('text', { x: x + cellWidth / 2, y: y + cellHeight / 2, class: `box-text box-text-player-${playerIndex + 1}` });
+             boxText.textContent = player.name.startsWith("Player ") ? playerIndex + 1 : player.name.substring(0, 1).toUpperCase();
+             const boxesGroup = document.getElementById('boxes-group');
+             if(boxesGroup) { boxesGroup.appendChild(boxRect); boxesGroup.appendChild(boxText); }
+             else { console.error("Boxes group not found for filling box!"); }
+        }
+
+        function handleLineClick(event) {
+            if (gameOver) return;
+            const target = event.target;
+            const r = parseInt(target.dataset.row);
+            const c = parseInt(target.dataset.col);
+            const orientation = target.dataset.orientation;
+
+            if (orientation === 'h') { if (horizontalLines[r][c] !== -1) return; horizontalLines[r][c] = currentPlayerIndex; }
+            else { if (verticalLines[r][c] !== -1) return; verticalLines[r][c] = currentPlayerIndex; }
+
+            remainingLines--;
+            drawVisibleLine(r, c, orientation);
+            target.removeEventListener('click', handleLineClick);
+            target.style.cursor = 'default';
+            target.style.fill = 'rgba(0,0,0,0.05)';
+
+            let scored = checkAndCompleteBoxes(r, c, orientation);
+             if (remainingLines === 0) { endGame(); return; }
+            if (!scored) { currentPlayerIndex = (currentPlayerIndex + 1) % numActivePlayers; updateUI("Turn"); }
+            else { updateUI("Score"); }
+        }
+
+        function checkAndCompleteBoxes(r, c, orientation) {
+             let scoredThisTurn = false;
+             let boxCoordsToCheck = [];
+             if (orientation === 'h') {
+                 if (r > 0) boxCoordsToCheck.push({ br: r - 1, bc: c });
+                 if (r < GRID_SIZE - 1) boxCoordsToCheck.push({ br: r, bc: c });
+             } else {
+                 if (c > 0) boxCoordsToCheck.push({ br: r, bc: c - 1 });
+                 if (c < GRID_SIZE - 1) boxCoordsToCheck.push({ br: r, bc: c });
+             }
+             for(const coords of boxCoordsToCheck) {
+                 const { br, bc } = coords;
+                 if (br >= 0 && br < GRID_SIZE - 1 && bc >= 0 && bc < GRID_SIZE - 1) {
+                     if (boxes[br][bc] === -1) {
+                         if (checkSquareComplete(br, bc)) {
+                             boxes[br][bc] = currentPlayerIndex; players[currentPlayerIndex].score++;
+                             fillBox(br, bc, currentPlayerIndex); scoredThisTurn = true;
+                         } } } }
+            if(scoredThisTurn) {
+                 const scoreSpan = document.getElementById(`score${currentPlayerIndex + 1}`);
+                 if(scoreSpan) scoreSpan.textContent = players[currentPlayerIndex].score;
+            }
+            return scoredThisTurn;
+        }
+
+        function checkSquareComplete(boxRow, boxCol) {
+            const top = horizontalLines[boxRow][boxCol] !== -1;
+            const bottom = horizontalLines[boxRow + 1][boxCol] !== -1;
+            const left = verticalLines[boxRow][boxCol] !== -1;
+            const right = verticalLines[boxRow][boxCol + 1] !== -1;
+            return top && bottom && left && right;
+        }
+
+         function endGame() {
+            gameOver = true;
+            let highestScore = -1; let winners = [];
+            for (let i = 0; i < numActivePlayers; i++) {
+                const scoreSpan = document.getElementById(`score${i + 1}`);
+                if (players[i].score > highestScore) { highestScore = players[i].score; }
+                if (scoreSpan) scoreSpan.textContent = players[i].score; // Final update
+            }
+            for (let i = 0; i < numActivePlayers; i++) { if (players[i].score === highestScore) { winners.push(players[i].name); } }
+            let winnerMessage;
+            if (winners.length === 1) { winnerMessage = `Game Over! ${winners[0]} Wins!`; }
+            else if (winners.length > 1) { winnerMessage = `Game Over! It's a Tie between ${winners.join(' and ')}!`; }
+            else { winnerMessage = "Game Over!"; }
+            if(messageArea) messageArea.textContent = winnerMessage;
+             for (let i = 0; i < numActivePlayers; i++) {
+                 const playerInfoDiv = document.getElementById(`player${i+1}-info`);
+                 if(playerInfoDiv) playerInfoDiv.classList.remove('active');
+             }
+            console.log("Game Over");
+        }
+
+        function updateUI(action = "Turn") {
+             for (let i = 0; i < numActivePlayers; i++) {
+                 const scoreSpan = document.getElementById(`score${i + 1}`);
+                 if (scoreSpan) { scoreSpan.textContent = players[i].score; }
+             }
+            if (gameOver || !players[currentPlayerIndex]) return;
+            const currentPlayer = players[currentPlayerIndex];
+            if (action === "Score") { if(messageArea) messageArea.textContent = `${currentPlayer.name} scored! Go again.`; }
+            else { if(messageArea) messageArea.textContent = `${currentPlayer.name}'s Turn`; }
+            for (let i = 0; i < numActivePlayers; i++) {
+                 const playerInfoDiv = document.getElementById(`player${i+1}-info`);
+                 if (playerInfoDiv) {
+                     if (i === currentPlayerIndex) { playerInfoDiv.classList.add('active'); }
+                     else { playerInfoDiv.classList.remove('active'); }
+                 } }
+        }
+
+        // --- Application Initialization ---
+        function initializeApp() {
+            console.log("Initializing App...");
+
+            // Check for existence of essential elements
+            const requiredIds = [
+                 'setup-container', 'game-container', 'num-players',
+                 'player1-name', 'player2-name', 'player3-name', 'player4-name',
+                 'start-game-button', 'reset-button',
+                 'game-board', 'info-area', 'message-area'
+             ];
+             let missingId = null;
+             for (const id of requiredIds) {
+                 if (!document.getElementById(id)) {
+                     missingId = id;
+                     break;
+                 }
+             }
+
+             if (missingId) {
+                 console.error(`FATAL: Could not find required element with ID: ${missingId}`);
+                 const body = document.body || document.getElementsByTagName('body')[0];
+                 if (body) { body.innerHTML = `<h1>Error loading game element: ${missingId}. Please refresh or contact support.</h1>`; }
+                 else { alert(`Error loading game element: ${missingId}. Please refresh.`); }
+                 return;
+             }
+
+            // Assign elements to variables
+            setupContainer = document.getElementById('setup-container');
+            gameContainer = document.getElementById('game-container');
+            numPlayersSelect = document.getElementById('num-players');
+            playerNameInputs = {
+                p1: document.getElementById('player1-name'), p2: document.getElementById('player2-name'),
+                p3: document.getElementById('player3-name'), p4: document.getElementById('player4-name')
+            };
+            startGameButton = document.getElementById('start-game-button');
+            svgBoard = document.getElementById('game-board');
+            infoArea = document.getElementById('info-area');
+            messageArea = document.getElementById('message-area');
+            resetButton = document.getElementById('reset-button');
+
+            // Attach event listeners
+            numPlayersSelect.addEventListener('change', togglePlayerNameInputs);
+            startGameButton.addEventListener('click', handleStartGame);
+            resetButton.addEventListener('click', showSetupScreen);
+
+            // Show the initial setup screen
+            showSetupScreen();
+             console.log("App Initialized.");
+        }
+
+        // --- Start the application ---
+        window.addEventListener('load', initializeApp);
+
+    </script>
+
+</body>
+</html>
