@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dots and Boxes (2-4 Players) - Full Screen 20x20</title>
+    <style>
+        /* Basic Reset & Full Viewport */
+        html, body {
+            height: 100%; /* Make html and body take full height */
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #fdfdfd;
+            background-image:
+                linear-gradient(#e0e0ff 1px, transparent 1px),
+                linear-gradient(90deg, #ffdddd 1px, transparent 1px);
+            background-size: 25px 25px, 50px 25px;
+            background-position: 0 0, 50px 0;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* justify-content: center; Vertically center setup screen */
+            /* Let game container push content */
+        }
+
+        /* Hide H1 when game is active */
+        body.game-active > h1 {
+            display: none;
+        }
+
+        h1 {
+            margin: 15px 0; /* Adjust margin */
+            color: #444;
+            text-align: center;
+            flex-shrink: 0; /* Prevent title from shrinking */
+        }
+
+        /* Setup Container - Keep centered, don't expand fully */
+        #setup-container {
+            background-color: rgba(253, 253, 253, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px; /* Add some margin when centered */
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 450px;
+            flex-shrink: 0; /* Prevent setup from shrinking */
+        }
+        #setup-container h2 { margin-top: 0; margin-bottom: 20px; color: #333; }
+        .setup-section { margin-bottom: 15px; width: 100%; display: flex; flex-direction: column; align-items: flex-start; }
+        .setup-section label { margin-bottom: 5px; font-weight: bold; color: #555; }
+        .setup-section input[type="text"], .setup-section select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        .player-name-inputs label { display: block; margin-bottom: 5px; }
+        .player-name-inputs input { margin-bottom: 10px; }
+        #start-game-button { margin-top: 15px; padding: 12px 25px; font-size: 1.1em; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; }
+        #start-game-button:hover { background-color: #0056b3; }
+
+
+        /* Game Container - Expand to fill space */
+        #game-container {
+            display: none; /* Initially hidden */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Center content vertically */
+            background-color: rgba(253, 253, 253, 0.9);
+            padding: 10px; /* Reduced padding */
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%; /* Take full width */
+            flex-grow: 1; /* Take available vertical space */
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent internal scroll */
+            max-height: 100vh; /* Ensure it doesn't exceed viewport */
+        }
+
+        /* Scoreboard and Turn Info */
+        .info-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center; /* Center scores */
+            gap: 10px; /* Add gap between player infos */
+            width: 95%; /* Use most of the width */
+            max-width: 600px; /* Increase max width */
+            margin-bottom: 10px; /* Space below scores */
+            font-size: 0.9em; /* Adjust if needed */
+            font-weight: bold;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .player-info {
+            padding: 4px 8px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            /* flex-basis removed for centering */
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.5); /* Slight background */
+        }
+        .player-info.active { background-color: rgba(255, 255, 0, 0.6); box-shadow: 0 0 5px rgba(255, 255, 0, 0.7); }
+         #player1-info { color: #007bff; } #player2-info { color: #dc3545; } #player3-info { color: #28a745; } #player4-info { color: #6f42c1; }
+
+        #message-area {
+            margin-bottom: 10px; /* Space below message */
+            font-size: 1em;
+            font-weight: bold;
+            min-height: 1.2em;
+            text-align: center;
+            color: #333;
+            width: 100%;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+
+        /* SVG Game Board - Scale within container */
+        #game-board {
+            background-color: transparent;
+            border-radius: 5px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+            /* Make SVG responsive, square, and fit available space */
+            width: auto; /* Let height dictate width via aspect ratio */
+            height: auto;
+            max-width: 95%; /* Limit width relative to container */
+            max-height: calc(95vh - 150px); /* Approximate height minus UI elements */
+            aspect-ratio: 1 / 1; /* Keep it square */
+            flex-shrink: 1; /* Allow shrinking if needed */
+            margin-bottom: 10px; /* Space below board */
+        }
+
+        /* Dots */
+        .dot { fill: #555; }
+
+        /* Clickable Line Areas */
+        .line-clickable { fill: transparent; cursor: pointer; transition: fill 0.2s ease; }
+        .line-clickable:hover { fill: rgba(0, 0, 0, 0.1); }
+
+        /* Drawn Lines */
+        .line-drawn {
+            stroke-width: 5px; /* <<< RE-ADJUSTED for larger board */
+            stroke-linecap: round; pointer-events: none;
+        }
+        .line-player-1 { stroke: #007bff; } .line-player-2 { stroke: #dc3545; } .line-player-3 { stroke: #28a745; } .line-player-4 { stroke: #6f42c1; }
+
+        /* Completed Boxes */
+        .box-filled { fill-opacity: 0.4; stroke: none; pointer-events: none; }
+        .box-player-1 { fill: #007bff; } .box-player-2 { fill: #dc3545; } .box-player-3 { fill: #28a745; } .box-player-4 { fill: #6f42c1; }
+
+        /* Player Initial/Number inside Box */
+        .box-text {
+            font-size: 14px; /* <<< RE-ADJUSTED for larger board */
+            font-weight: bold; fill-opacity: 0.9; text-anchor: middle; dominant-baseline: central; pointer-events: none; fill: #fff;
+        }
+
+        /* Reset Button */
+        #reset-button {
+            padding: 8px 15px; /* Slightly smaller button */
+            font-size: 0.9em;
+            font-weight: bold; color: white; background-color: #6c757d; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        #reset-button:hover { background-color: #5a6268; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Dots and Boxes</h1>
+
+    <div id="setup-container">
+        <h2>Game Setup</h2>
+        <div class="setup-section">
+            <label for="num-players">Number of Players:</label>
+            <select id="num-players">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+            </select>
+        </div>
+        <div class="setup-section player-name-inputs">
+             <label>Player Names:</label>
+             <input type="text" id="player1-name" placeholder="Player 1 Name" value="Player 1">
+             <input type="text" id="player2-name" placeholder="Player 2 Name" value="Player 2">
+             <input type="text" id="player3-name" placeholder="Player 3 Name" value="Player 3" style="display: none;">
+             <input type="text" id="player4-name" placeholder="Player 4 Name" value="Player 4" style="display: none;">
+        </div>
+        <button id="start-game-button">Start Game</button>
+    </div>
+
+    <div class="game-container" id="game-container">
+        <div class="info-area" id="info-area">
+            </div>
+        <div id="message-area">
+            </div>
+        <svg id="game-board" viewBox="0 0 400 400"></svg>
+         <button id="reset-button">New Game / Setup</button>
+    </div>
+
+    <script>
+        // --- Game Configuration ---
+        const GRID_SIZE = 20;
+        const DOT_RADIUS = 4; // <<< RE-ADJUSTED for larger physical size
+        const LINE_CLICK_WIDTH = 12; // <<< RE-ADJUSTED for larger physical size
+        const BOARD_PADDING = 25; // <<< RE-ADJUSTED
+        const PLAYER_COLORS = ['#007bff', '#dc3545', '#28a745', '#6f42c1'];
+
+        // --- Game State Variables ---
+        let boardWidth, boardHeight, cellWidth, cellHeight;
+        let players = [];
+        let numActivePlayers = 0;
+        let currentPlayerIndex;
+        let horizontalLines, verticalLines, boxes;
+        let remainingLines;
+        let gameOver;
+
+        // --- DOM Element Variables ---
+        let setupContainer, gameContainer, numPlayersSelect, playerNameInputs,
+            startGameButton, svgBoard, infoArea, messageArea, resetButton;
+
+        // --- Function Definitions ---
+
+        function showSetupScreen() {
+            if (!setupContainer || !gameContainer) { console.error("Setup/Game container not found!"); return; }
+            document.body.classList.remove('game-active'); // Remove class for setup screen
+            setupContainer.style.display = 'flex';
+            gameContainer.style.display = 'none';
+            if (numPlayersSelect) {
+                 numPlayersSelect.value = '2';
+                 togglePlayerNameInputs();
+            }
+        }
+
+        function togglePlayerNameInputs() {
+             if (!numPlayersSelect || !playerNameInputs || !playerNameInputs.p3 || !playerNameInputs.p4) { console.error("Player name input elements not found!"); return; }
+            const selectedNum = parseInt(numPlayersSelect.value);
+            playerNameInputs.p3.style.display = selectedNum >= 3 ? 'block' : 'none';
+            playerNameInputs.p4.style.display = selectedNum >= 4 ? 'block' : 'none';
+        }
+
+        function handleStartGame() {
+             if (!numPlayersSelect || !playerNameInputs || !playerNameInputs.p1 || !playerNameInputs.p2 ||
+                 !playerNameInputs.p3 || !playerNameInputs.p4 || !setupContainer || !gameContainer) { console.error("Setup elements not found!"); return; }
+
+            const selectedNum = parseInt(numPlayersSelect.value);
+            const names = [
+                playerNameInputs.p1.value.trim() || "Player 1",
+                playerNameInputs.p2.value.trim() || "Player 2"
+            ];
+            if (selectedNum >= 3) names.push(playerNameInputs.p3.value.trim() || "Player 3");
+            if (selectedNum >= 4) names.push(playerNameInputs.p4.value.trim() || "Player 4");
+
+            if (names.some(name => name.length === 0)) { alert("Please enter names for all selected players."); return; }
+
+            document.body.classList.add('game-active'); // Add class for game screen
+            setupContainer.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            // Delay initGame slightly to allow container to become visible for size calculation
+            requestAnimationFrame(() => initGame(selectedNum, names));
+        }
+
+        function initGame(numPlayers, playerNames) {
+             if (!svgBoard || !infoArea) { console.error("SVG Board or Info Area not found!"); return; }
+            svgBoard.innerHTML = '';
+            infoArea.innerHTML = '';
+            numActivePlayers = numPlayers;
+
+            // --- SVG Size Calculation ---
+            // Use the actual rendered size of the SVG element for calculations
+            const svgRect = svgBoard.getBoundingClientRect();
+            boardWidth = svgRect.width;
+            boardHeight = svgRect.height; // Should be same as width due to aspect-ratio
+
+             // Fallback if size is still 0 (e.g., hidden parent)
+             if (boardWidth === 0 || boardHeight === 0) {
+                 console.warn("SVG size calculation failed, using fallback.");
+                 // Estimate based on viewport, maintaining aspect ratio
+                 const availableWidth = window.innerWidth * 0.9; // Approx 90% width
+                 const availableHeight = (window.innerHeight - 150) * 0.9; // Approx height minus UI * 90%
+                 boardWidth = boardHeight = Math.min(availableWidth, availableHeight);
+                 // Apply this size to SVG element if needed? No, CSS handles display size.
+                 // We just need it for internal calculations.
+             }
+
+             // Update viewBox to calculated size for scaling internal coordinates
+             // Use a consistent internal coordinate system (e.g., 400x400)
+             const internalViewBoxSize = 400;
+             svgBoard.setAttribute('viewBox', `0 0 ${internalViewBoxSize} ${internalViewBoxSize}`);
+
+             // Calculate cell dimensions based on the *internal coordinate system*
+             cellWidth = (internalViewBoxSize - 2 * BOARD_PADDING) / (GRID_SIZE - 1);
+             cellHeight = (internalViewBoxSize - 2 * BOARD_PADDING) / (GRID_SIZE - 1);
+
+
+            players = [];
+            for (let i = 0; i < numActivePlayers; i++) {
+                players.push({ id: i, name: playerNames[i], score: 0, color: PLAYER_COLORS[i % PLAYER_COLORS.length] });
+                const playerInfoDiv = document.createElement('div');
+                playerInfoDiv.id = `player${i+1}-info`;
+                playerInfoDiv.classList.add('player-info');
+                playerInfoDiv.style.color = players[i].color;
+                playerInfoDiv.innerHTML = `${players[i].name}: <span id="score${i+1}">0</span>`;
+                infoArea.appendChild(playerInfoDiv);
+            }
+
+            currentPlayerIndex = 0;
+            gameOver = false;
+            horizontalLines = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE - 1).fill(-1));
+            verticalLines = Array(GRID_SIZE - 1).fill(null).map(() => Array(GRID_SIZE).fill(-1));
+            boxes = Array(GRID_SIZE - 1).fill(null).map(() => Array(GRID_SIZE - 1).fill(-1));
+            remainingLines = (GRID_SIZE * (GRID_SIZE - 1)) + ((GRID_SIZE - 1) * GRID_SIZE);
+
+            drawGrid(); // Uses internal coordinates now
+            updateUI();
+            console.log(`Game Initialized for ${numActivePlayers} players on a ${GRID_SIZE}x${GRID_SIZE} grid`);
+            console.log(`SVG display size: ${svgRect.width}x${svgRect.height}, ViewBox: 0 0 ${internalViewBoxSize} ${internalViewBoxSize}`);
+            console.log(`Internal cell size: ${cellWidth}x${cellHeight}`);
+        }
+
+        function drawGrid() {
+             if (!svgBoard) { console.error("SVG Board not found for drawing!"); return; }
+            const dotsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            const linesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            const boxesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            linesGroup.id = 'lines-group';
+            boxesGroup.id = 'boxes-group';
+
+            // Calculations use internal cellWidth/cellHeight based on viewBox
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const x = BOARD_PADDING + c * cellWidth;
+                    const y = BOARD_PADDING + r * cellHeight;
+                    const dot = createSvgElement('circle', { cx: x, cy: y, r: DOT_RADIUS, class: 'dot' });
+                    dotsGroup.appendChild(dot);
+                    if (c < GRID_SIZE - 1) {
+                        // Clickable area dimensions use internal cellWidth/cellHeight
+                        const hLine = createSvgElement('rect', {
+                            x: x + DOT_RADIUS, y: y - LINE_CLICK_WIDTH / 2,
+                            width: cellWidth - 2 * DOT_RADIUS, height: LINE_CLICK_WIDTH,
+                            class: 'line-clickable', 'data-row': r, 'data-col': c, 'data-orientation': 'h'
+                        });
+                        hLine.addEventListener('click', handleLineClick);
+                        linesGroup.appendChild(hLine);
+                    }
+                    if (r < GRID_SIZE - 1) {
+                        const vLine = createSvgElement('rect', {
+                            x: x - LINE_CLICK_WIDTH / 2, y: y + DOT_RADIUS,
+                            width: LINE_CLICK_WIDTH, height: cellHeight - 2 * DOT_RADIUS,
+                            class: 'line-clickable', 'data-row': r, 'data-col': c, 'data-orientation': 'v'
+                        });
+                        vLine.addEventListener('click', handleLineClick);
+                        linesGroup.appendChild(vLine);
+                    }
+                }
+            }
+            svgBoard.appendChild(boxesGroup);
+            svgBoard.appendChild(linesGroup);
+            svgBoard.appendChild(dotsGroup);
+        }
+
+        function createSvgElement(tag, attributes) {
+            const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
+            for (const key in attributes) { element.setAttribute(key, attributes[key]); }
+            return elem
